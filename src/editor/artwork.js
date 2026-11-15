@@ -77,6 +77,7 @@ export function renderArtwork(data, palette, svgElement) {
   const xInner = xFront + PANEL.front;
   const totalWidth = xInner + PANEL.inner;
   const coverBound = PANEL.front;
+  const coverFeather = Math.max(0, Math.min(Number(data.coverFeather) || 0, PANEL.front / 2));
   const bleed = Math.max(0, Math.min(data.bleed, 10));
   const coverBleedOverlap = Math.min(bleed, 0.2);
   const pad = Math.max(0, Math.min(data.padding, 15));
@@ -95,8 +96,30 @@ export function renderArtwork(data, palette, svgElement) {
     <clipPath id="sideATracksClip"><rect x="${xInner + pad}" y="${sideAY}" width="${innerContentWidth}" height="${Math.max(0, innerBlockHeight)}"/></clipPath>
     <clipPath id="sideBTracksClip"><rect x="${xInner + pad}" y="${sideBY}" width="${innerContentWidth}" height="${Math.max(0, innerBlockHeight)}"/></clipPath>
   </defs>`;
+  const horizontalFeatherStart = coverFeather / PANEL.front;
+  const horizontalFeatherEnd = 1 - horizontalFeatherStart;
+  const bottomFeatherStart = 1 - coverFeather / coverBound;
+  const coverFeatherDefs = coverFeather > 0 ? `<defs>
+    <linearGradient id="coverHorizontalFeatherGradient" gradientUnits="userSpaceOnUse" x1="${xFront}" y1="0" x2="${xFront + PANEL.front}" y2="0">
+      <stop offset="0" stop-color="white" stop-opacity="0"/>
+      <stop offset="${horizontalFeatherStart}" stop-color="white" stop-opacity="1"/>
+      <stop offset="${horizontalFeatherEnd}" stop-color="white" stop-opacity="1"/>
+      <stop offset="1" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="coverBottomFeatherGradient" gradientUnits="userSpaceOnUse" x1="0" y1="${coverBound - coverFeather}" x2="0" y2="${coverBound}">
+      <stop offset="0" stop-color="white" stop-opacity="1"/>
+      <stop offset="1" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+    <mask id="coverHorizontalFeatherMask" maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse" x="${xFront}" y="${-bleed}" width="${PANEL.front}" height="${coverBound + bleed}">
+      <rect x="${xFront}" y="${-bleed}" width="${PANEL.front}" height="${coverBound + bleed}" fill="url(#coverHorizontalFeatherGradient)"/>
+    </mask>
+    <mask id="coverBottomFeatherMask" maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse" x="${xFront}" y="0" width="${PANEL.front}" height="${coverBound}">
+      <rect x="${xFront}" y="0" width="${PANEL.front}" height="${coverBound}" fill="url(#coverBottomFeatherGradient)"/>
+    </mask>
+  </defs>` : "";
 
   pieces.push(clipDefs);
+  if (coverFeatherDefs) pieces.push(coverFeatherDefs);
   pieces.push(renderPrintGuides({ totalWidth, xSide, xFront, xInner, bleed }));
   pieces.push(`<rect x="${-bleed}" y="${-bleed}" width="${totalWidth + bleed * 2}" height="${PANEL.height + bleed * 2}" fill="${data.background}"/>`);
 
@@ -133,8 +156,14 @@ export function renderArtwork(data, palette, svgElement) {
 
   if (data.cover) {
     const coverImage = `<image href="${data.cover}" x="${xFront}" y="0" width="${PANEL.front}" height="${coverBound}" preserveAspectRatio="xMidYMid slice"/>`;
-    pieces.push(`<g clip-path="url(#topCoverBleedClip)"><image href="${data.cover}" x="${xFront}" y="0" width="${PANEL.front}" height="${coverBound}" preserveAspectRatio="xMidYMid slice" transform="translate(0 ${coverBleedOverlap}) scale(1 -1)"/></g>`);
-    pieces.push(coverImage);
+    const reflectedImage = `<image href="${data.cover}" x="${xFront}" y="0" width="${PANEL.front}" height="${coverBound}" preserveAspectRatio="xMidYMid slice" transform="translate(0 ${coverBleedOverlap}) scale(1 -1)"/>`;
+    if (coverFeather > 0) {
+      pieces.push(`<g clip-path="url(#topCoverBleedClip)" mask="url(#coverHorizontalFeatherMask)">${reflectedImage}</g>`);
+      pieces.push(`<g mask="url(#coverHorizontalFeatherMask)"><g mask="url(#coverBottomFeatherMask)">${coverImage}</g></g>`);
+    } else {
+      pieces.push(`<g clip-path="url(#topCoverBleedClip)">${reflectedImage}</g>`);
+      pieces.push(coverImage);
+    }
   } else {
     pieces.push(`<g clip-path="url(#coverClip)">
       <rect x="${xFront}" y="0" width="${PANEL.front}" height="${coverBound}" fill="#1A1A1A"/>

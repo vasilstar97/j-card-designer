@@ -16,7 +16,7 @@ import { loadWorkspace, saveWorkspace } from "./editor/storage.js";
 import PreviewWorkspace from "./components/PreviewWorkspace.jsx";
 import ReleaseSettings from "./components/ReleaseSettings.jsx";
 import TrackListEditor from "./components/TrackListEditor.jsx";
-import { colorDefaults } from "./editor/constants.js";
+import { colorDefaults, PANEL } from "./editor/constants.js";
 
 function createCardId() {
   return globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -42,10 +42,14 @@ function normalizeCard(card) {
     typeof data.font !== "string" ||
     typeof data.date !== "string" ||
     typeof data.cover !== "string" ||
+    typeof data.coverFeather !== "number" ||
+    !Number.isFinite(data.coverFeather) ||
+    data.coverFeather < 0 ||
     !Array.isArray(data.palette) ||
     !Array.isArray(data.sideASongs) ||
     !Array.isArray(data.sideBSongs)
   ) return null;
+  data.coverFeather = Math.min(PANEL.front / 2, data.coverFeather);
   data.colors = { ...defaults.colors, ...data.colors };
   const isHexColor = (color) => typeof color === "string" && /^#[\da-f]{6}$/i.test(color);
   const validTracks = (tracks) =>
