@@ -130,7 +130,7 @@ export function renderArtwork(data, palette, svgElement) {
     const quoteY = (PANEL.back - quoteHeight) / 2 + 3;
     pieces.push(`<g transform="translate(${xBack + PANEL.back} 0) rotate(90)" clip-path="url(#backTextClip)">`);
     pieces.push(svgTextLines(quoteLines, PANEL.height / 2, quoteY, {
-      size: 3, lineHeight, color: data.text, weight: 600, anchor: "middle", font
+      size: 3, lineHeight, color: data.accent, weight: 600, anchor: "middle", font
     }));
     pieces.push("</g>");
   }

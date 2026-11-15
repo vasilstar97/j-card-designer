@@ -22,12 +22,6 @@ function ReleaseSettings({
       </div>
       <div className="editor-content">
         <div className="section-content">
-          <label className="field">Artist
-            <input id="artist-name" type="text" defaultValue="Artist" maxLength={160} />
-          </label>
-          <label className="field">Cover feather (mm)
-            <input id="cover-feather" type="number" min="0" max={PANEL.front / 2} step="0.1" defaultValue="0" />
-          </label>
           <Dragger
             className="cover-uploader"
             accept="image/*"
@@ -42,6 +36,12 @@ function ReleaseSettings({
             <p className="ant-upload-text">Choose or drop an image or image URL</p>
             <p className="ant-upload-hint">You can also paste an image or image URL from the clipboard</p>
           </Dragger>
+          <label className="field">Cover feather (mm)
+            <input id="cover-feather" type="number" min="0" max={PANEL.front / 2} step="0.1" defaultValue="0" />
+          </label>
+          <label className="field">Artist
+            <input id="artist-name" type="text" defaultValue="Artist" maxLength={160} />
+          </label>
           <label className="field">Album title
             <input id="album-name" type="text" defaultValue="Album title" maxLength={160} />
           </label>
