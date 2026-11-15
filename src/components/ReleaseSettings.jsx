@@ -1,0 +1,103 @@
+import React from "react";
+import Button from "antd/es/button";
+import Upload from "antd/es/upload";
+import { DesignColorControl, PaletteColorControl } from "./ColorControls.jsx";
+
+const { Dragger } = Upload;
+
+function ReleaseSettings({
+  onCoverFile,
+  onReset,
+  paletteColors,
+  designColors,
+  onPaletteColorChange,
+  onDesignColorChange
+}) {
+  return (
+    <aside className="editor" aria-label="Design settings">
+      <div className="editor-heading">
+        <h1>Design</h1>
+        <Button className="text-button" type="text" htmlType="button" onClick={onReset}>Reset</Button>
+      </div>
+      <div className="editor-content">
+        <div className="section-content">
+          <Dragger
+            className="cover-uploader"
+            accept="image/*"
+            maxCount={1}
+            multiple={false}
+            showUploadList={false}
+            beforeUpload={(file) => {
+              onCoverFile(file);
+              return false;
+            }}
+          >
+            <p className="ant-upload-text">Choose or drop an image or image URL</p>
+            <p className="ant-upload-hint">You can also paste an image or image URL from the clipboard</p>
+          </Dragger>
+          <label className="field">Artist
+            <input id="artist-name" type="text" defaultValue="Artist" maxLength={160} />
+          </label>
+          <label className="field">Album title
+            <input id="album-name" type="text" defaultValue="Album title" maxLength={160} />
+          </label>
+          <label className="field">Release info
+            <textarea id="info-text" rows={2} placeholder="e.g. album, side B" defaultValue="Debut album" />
+          </label>
+          <div className="field-row">
+            <label className="field">Month / year
+              <input id="recorded-date" type="month" />
+            </label>
+            <label className="field">Font
+              <select id="font-family">
+                <option value="Open Sans">Open Sans</option>
+                <option value="Noto Sans JP">Noto Sans JP</option>
+              </select>
+            </label>
+          </div>
+          <label className="field">Back cover quote
+            <textarea id="quote-text" rows={3} placeholder="Enter a quote or release text" />
+          </label>
+          <section className="color-settings" aria-label="Artwork colors">
+            <div className="palette-setting">
+              <div className="color-setting-label">Palette</div>
+              <div className="palette-colors">
+                {paletteColors.map((color, index) => (
+                  <PaletteColorControl
+                    key={index}
+                    index={index}
+                    color={color}
+                    onChange={(value) => onPaletteColorChange(index, value)}
+                    onPick={(value) => onPaletteColorChange(index, value)}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="design-colors">
+              <DesignColorControl
+                label="Text"
+                color={designColors.text}
+                onChange={(value) => onDesignColorChange("text", value)}
+                onPick={(value) => onDesignColorChange("text", value)}
+              />
+              <DesignColorControl
+                label="Accent"
+                color={designColors.accent}
+                onChange={(value) => onDesignColorChange("accent", value)}
+                onPick={(value) => onDesignColorChange("accent", value)}
+              />
+              <DesignColorControl
+                label="Background"
+                color={designColors.background}
+                onChange={(value) => onDesignColorChange("background", value)}
+                onPick={(value) => onDesignColorChange("background", value)}
+              />
+            </div>
+          </section>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+export default React.memo(ReleaseSettings);
