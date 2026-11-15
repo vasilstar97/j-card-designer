@@ -130,7 +130,7 @@ export function renderArtwork(data, palette, svgElement) {
     const quoteY = (PANEL.back - quoteHeight) / 2 + 3;
     pieces.push(`<g transform="translate(${xBack + PANEL.back} 0) rotate(90)" clip-path="url(#backTextClip)">`);
     pieces.push(svgTextLines(quoteLines, PANEL.height / 2, quoteY, {
-      size: 3, lineHeight, color: data.text, weight: 600, anchor: "middle", font
+      size: 3, lineHeight, color: data.accent, weight: 600, anchor: "middle", font
     }));
     pieces.push("</g>");
   }
@@ -138,10 +138,15 @@ export function renderArtwork(data, palette, svgElement) {
   pieces.push(`<g transform="translate(${xSide + PANEL.side} 0) rotate(90)" clip-path="url(#sideTextClip)">`);
   const paletteStart = coverBound;
   const sideTextWidth = Math.max(1, paletteStart - 2 * pad);
-  const sideTextLines = approximateWrap([data.artist, data.album].filter(Boolean).join("\n"), sideTextWidth, 3);
+  const sideArtistLines = data.artist ? approximateWrap(data.artist, sideTextWidth, 3) : [];
+  const sideAlbumLines = data.album ? approximateWrap(data.album, sideTextWidth, 3) : [];
+  const sideTextLines = [...sideArtistLines, ...sideAlbumLines];
   const sideTextY = (PANEL.side - (sideTextLines.length - 1) * 4) / 2;
   pieces.push(`<g id="side-panel-copy">`);
-  pieces.push(svgTextLines(sideTextLines, pad, sideTextY, {
+  pieces.push(svgTextLines(sideArtistLines, pad, sideTextY, {
+    size: 3, lineHeight: 4, color: data.accent, weight: 600, font, anchor: "start"
+  }));
+  pieces.push(svgTextLines(sideAlbumLines, pad, sideTextY + sideArtistLines.length * 4, {
     size: 3, lineHeight: 4, color: data.text, weight: 600, font, anchor: "start"
   }));
   pieces.push("</g>");
