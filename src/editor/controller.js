@@ -108,7 +108,7 @@ export function restoreCardState(state) {
   });
   palette.splice(0, palette.length, ...state.palette);
   coverDataUrl = state.cover || "";
-  $("#image-status").textContent = "";
+  $("#image-status").textContent = coverDataUrl ? "Saved cover image" : "";
   renderTrackList("a", state.sideASongs);
   renderTrackList("b", state.sideBSongs);
   updateArtwork({ notify: false });
