@@ -163,7 +163,7 @@ h1, h2 { margin: 0; font-size: 20px; letter-spacing: -.55px; }
 .card-tab-close:hover { color: var(--accent); }
 .card-tab-add { flex: 0 0 auto; width: 30px; height: 30px; margin-bottom: 3px; border: 1px solid #d9d9d9; border-radius: 6px; background: #fff; color: #444; font-size: 18px; line-height: 1; }
 .card-tab-add:hover { border-color: var(--accent); color: var(--accent); }
-.export-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.export-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
 .export-actions .button { min-height: 32px; }
 .paper-size-select, .color-mode-select { height: 30px; padding: 0 8px; border: 1px solid #d9d9d9; border-radius: 6px; background: #fff; color: var(--ink); font-size: 12px; }
 .paper-size-select { min-width: 64px; }
@@ -181,20 +181,21 @@ h1, h2 { margin: 0; font-size: 20px; letter-spacing: -.55px; }
 .card3d-face { position: absolute; top: 50%; left: 50%; overflow: hidden; border: 1px solid #66717c70; backface-visibility: hidden; }
 .card3d-front-face, .card3d-back-face, .card3d-inner-insert { width: var(--case-width); height: var(--case-height); }
 .card3d-front-face { transform: translate(-50%, -50%) translateZ(calc(var(--case-depth) / 2)); background: #dce5ec30; }
-.card3d-back-face { transform: translate(-50%, -50%) rotateY(180deg) translateZ(calc(var(--case-depth) / 2)); background: #dce5ec40; }
+.card3d-back-face, .card3d-wall { background: #dce5ec40; }
+.card3d-back-face { transform: translate(-50%, -50%) rotateY(180deg) translateZ(calc(var(--case-depth) / 2)); }
 .card3d-inner-insert { transform: translate(-50%, -50%) translateZ(calc(var(--case-depth) / 2 - 2px)) rotateY(180deg); border: 0; background: transparent; }
 .card3d-panel-texture { position: absolute; top: 50%; left: 50%; display: block; max-width: none; transform: translate(-50%, -50%); object-fit: fill; user-select: none; }
 .card3d-back-panel { position: absolute; inset: 0 0 0 auto; width: 41.45%; overflow: hidden; }
 .card3d-back-reverse { width: var(--case-width); height: var(--case-height); transform: translate(-50%, -50%) translateZ(calc(2px - var(--case-depth) / 2)); border: 0; background: transparent; }
 .card3d-back-reverse-panel { position: absolute; top: 0; bottom: 0; left: 0; width: 41.45%; background: #d1d5db; }
 .card3d-glass { position: absolute; inset: 0; border: 1px solid #ffffffaa; background: #dce5ec1c; pointer-events: none; }
-.card3d-spine-face, .card3d-right-wall { width: var(--case-depth); height: var(--case-height); background: #dce5ec35; }
+.card3d-spine-face, .card3d-right-wall { width: var(--case-depth); height: var(--case-height); }
 .card3d-spine-face { transform: translate(-50%, -50%) rotateY(-90deg) translateZ(calc(var(--case-width) / 2)); background: #dce5ec48; }
 .card3d-spine-reverse { width: var(--case-depth); height: var(--case-height); transform: translate(-50%, -50%) rotateY(90deg) translateZ(calc(2px - var(--case-width) / 2)); border: 0; background: #d1d5db; }
-.card3d-top-wall, .card3d-bottom-wall { width: var(--case-width); height: var(--case-depth); background: #dce5ec35; }
+.card3d-top-wall, .card3d-bottom-wall { width: calc(var(--case-width) + .5px); height: calc(var(--case-depth) + .5px); }
 .card3d-top-wall { transform: translate(-50%, -50%) rotateX(90deg) translateZ(calc(var(--case-height) / 2)); }
 .card3d-bottom-wall { transform: translate(-50%, -50%) rotateX(-90deg) translateZ(calc(var(--case-height) / 2)); }
-.card3d-right-wall { transform: translate(-50%, -50%) rotateY(90deg) translateZ(calc(var(--case-width) / 2)); }
+.card3d-right-wall { width: calc(var(--case-depth) + .5px); height: calc(var(--case-height) + .5px); transform: translate(-50%, -50%) rotateY(90deg) translateZ(calc(var(--case-width) / 2)); }
 .card3d-hint { position: absolute; right: 12px; bottom: 10px; color: #555; font-size: 10px; }
 .card3d-error { max-width: 360px; padding: 16px; color: #b42318; font-size: 12px; text-align: center; }
 #artwork text { text-rendering: geometricPrecision; }

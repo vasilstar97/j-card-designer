@@ -48,6 +48,9 @@ function CardTabs({ cards, activeCardId, onSelectCard, onAddCard, onCloseCard, o
 function PreviewFooter({
   onExport,
   exporting,
+  includeInPdf,
+  onIncludeInPdfChange,
+  hasIncludedCards,
   paperSize,
   onPaperSizeChange,
   colorMode,
@@ -81,6 +84,10 @@ function PreviewFooter({
         </label>
       </div>
       <div className="export-actions">
+        <label className="guide-toggle" title="Include this J-card in the exported PDF">
+          <input type="checkbox" checked={includeInPdf} onChange={(event) => onIncludeInPdfChange(event.target.checked)} />
+          <span>Include in PDF</span>
+        </label>
         <select
           className="paper-size-select"
           aria-label="PDF paper size"
@@ -100,7 +107,7 @@ function PreviewFooter({
           <option value="RGB">RGB (sRGB)</option>
           <option value="CMYK">CMYK (generic)</option>
         </select>
-        <button className="button button-primary" type="button" disabled={exporting} onClick={() => onExport(paperSize, colorMode)}>
+        <button className="button button-primary" type="button" disabled={exporting || !hasIncludedCards} onClick={() => onExport(paperSize, colorMode)}>
           Download PDF
         </button>
       </div>
@@ -116,7 +123,10 @@ export default function PreviewWorkspace({
   onCloseCard,
   onRegisterTitleUpdater,
   onExport,
-  exporting
+  exporting,
+  includeInPdf,
+  onIncludeInPdfChange,
+  hasIncludedCards
 }) {
   const [paperSize, setPaperSize] = useState("A4");
   const [colorMode, setColorMode] = useState("RGB");
@@ -143,6 +153,9 @@ export default function PreviewWorkspace({
       <PreviewFooter
         onExport={onExport}
         exporting={exporting}
+        includeInPdf={includeInPdf}
+        onIncludeInPdfChange={onIncludeInPdfChange}
+        hasIncludedCards={hasIncludedCards}
         paperSize={paperSize}
         onPaperSizeChange={setPaperSize}
         colorMode={colorMode}

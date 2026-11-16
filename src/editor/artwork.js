@@ -88,8 +88,8 @@ export function renderArtwork(data, palette, svgElement) {
   const sideBY = sideAY + innerBlockHeight + pad;
   const innerContentWidth = PANEL.inner - 2 * pad;
   const clipDefs = `<defs>
-    <clipPath id="backTextClip"><rect x="0" y="0" width="${PANEL.height}" height="${PANEL.back}"/></clipPath>
-    <clipPath id="sideTextClip"><rect x="0" y="0" width="${PANEL.height}" height="${PANEL.side}"/></clipPath>
+    <clipPath id="backTextClip"><rect x="${pad}" y="${pad}" width="${Math.max(0, PANEL.height - 2 * pad)}" height="${Math.max(0, PANEL.back - 2 * pad)}"/></clipPath>
+    <clipPath id="sideTextClip"><rect x="${pad}" y="${pad}" width="${Math.max(0, PANEL.height - 2 * pad)}" height="${Math.max(0, PANEL.side - 2 * pad)}"/></clipPath>
     <clipPath id="frontClip"><rect x="${xFront}" y="0" width="${PANEL.front}" height="${PANEL.height}"/></clipPath>
     <clipPath id="coverClip"><rect x="${xFront}" y="0" width="${PANEL.front}" height="${coverBound}"/></clipPath>
     <clipPath id="topCoverBleedClip"><rect x="${xFront}" y="${-bleed}" width="${PANEL.front}" height="${bleed + coverBleedOverlap}"/></clipPath>
@@ -124,13 +124,14 @@ export function renderArtwork(data, palette, svgElement) {
   pieces.push(`<rect x="${-bleed}" y="${-bleed}" width="${totalWidth + bleed * 2}" height="${PANEL.height + bleed * 2}" fill="${data.background}"/>`);
 
   if (data.quote) {
-    const quoteLines = approximateWrap(data.quote, PANEL.height - pad * 2, 3);
+    const quoteLines = approximateWrap(data.quote, PANEL.height - pad * 2, 3,
+      (text) => measuredTextWidth(text, data.font, 600));
     const lineHeight = 4;
     const quoteHeight = quoteLines.length * lineHeight;
-    const quoteY = (PANEL.back - quoteHeight) / 2 + 3;
+    const quoteY = (PANEL.back - quoteHeight) / 2 + lineHeight / 2;
     pieces.push(`<g transform="translate(${xBack + PANEL.back} 0) rotate(90)" clip-path="url(#backTextClip)">`);
     pieces.push(svgTextLines(quoteLines, PANEL.height / 2, quoteY, {
-      size: 3, lineHeight, color: data.accent, weight: 600, anchor: "middle", font
+      size: 3, lineHeight, color: data.accent, weight: 600, anchor: "middle", baseline: "central", font
     }));
     pieces.push("</g>");
   }
@@ -138,19 +139,25 @@ export function renderArtwork(data, palette, svgElement) {
   pieces.push(`<g transform="translate(${xSide + PANEL.side} 0) rotate(90)" clip-path="url(#sideTextClip)">`);
   const paletteStart = coverBound;
   const sideTextWidth = Math.max(1, paletteStart - 2 * pad);
-  const sideTextLines = approximateWrap([data.artist, data.album].filter(Boolean).join("\n"), sideTextWidth, 3);
-  const sideTextY = (PANEL.side - (sideTextLines.length - 1) * 4) / 2;
+  const sideArtistLines = approximateWrap(data.artist || "", sideTextWidth, 3,
+    (text) => measuredTextWidth(text, data.font, 600));
+  const sideAlbumLines = approximateWrap(data.album || "", sideTextWidth, 3,
+    (text) => measuredTextWidth(text, data.font, 600));
+  const sideLineHeight = Math.min(4, Math.max(0, PANEL.side - 2 * pad) / (sideArtistLines.length + sideAlbumLines.length));
+  const sideTextY = pad + sideLineHeight / 2;
   pieces.push(`<g id="side-panel-copy">`);
-  pieces.push(svgTextLines(sideTextLines, pad, sideTextY, {
-    size: 3, lineHeight: 4, color: data.text, weight: 600, font, anchor: "start"
+  pieces.push(svgTextLines(sideArtistLines, pad, sideTextY, {
+    size: 3, lineHeight: sideLineHeight, color: data.accent, weight: 600, font, anchor: "start", baseline: "central"
+  }));
+  pieces.push(svgTextLines(sideAlbumLines, pad, sideTextY + sideArtistLines.length * sideLineHeight, {
+    size: 3, lineHeight: sideLineHeight, color: data.text, weight: 600, font, anchor: "start", baseline: "central"
   }));
   pieces.push("</g>");
   const paletteEnd = PANEL.height - pad;
-  const swatchSize = Math.max(0, Math.min(PANEL.side - 2 * pad, (paletteEnd - paletteStart) / 5));
-  const swatchGap = ((paletteEnd - paletteStart) - swatchSize * 5) / 4;
+  const swatchWidth = Math.max(0, (paletteEnd - paletteStart) / palette.length);
   palette.forEach((color, index) => {
-    const sx = paletteStart + index * (swatchSize + swatchGap);
-    pieces.push(`<rect x="${sx}" y="${pad}" width="${swatchSize}" height="${swatchSize}" fill="${color}"/>`);
+    const sx = paletteStart + index * swatchWidth;
+    pieces.push(`<rect x="${sx}" y="${pad}" width="${swatchWidth}" height="${Math.max(0, PANEL.side - 2 * pad)}" fill="${color}"/>`);
   });
   pieces.push("</g>");
 
@@ -173,9 +180,13 @@ export function renderArtwork(data, palette, svgElement) {
   }
 
   pieces.push(`<g clip-path="url(#frontClip)">`);
-  const titleY = coverBound + pad + 2.25;
-  const dateReserve = 8;
-  const artistAvailableHeight = Math.max(4, PANEL.height - pad - dateReserve - titleY);
+  // All positions describe 4 mm line boxes, with text centered inside each line.
+  const lineHeight = 4;
+  const frontTextTop = coverBound + pad;
+  const dateTop = PANEL.height - pad - lineHeight;
+  const infoBottom = dateTop - pad;
+  const artistAvailableHeight = Math.max(lineHeight, infoBottom - frontTextTop - pad - 2 * lineHeight);
+  const titleY = frontTextTop + lineHeight / 2;
   const artistLines = approximateWrap(
     data.artist || "",
     PANEL.front - pad * 2,
@@ -185,43 +196,40 @@ export function renderArtwork(data, palette, svgElement) {
   const maxArtistLines = Math.max(1, Math.floor(artistAvailableHeight / 4));
   const shownArtistLines = artistLines.slice(0, maxArtistLines);
   pieces.push(svgTextLines(shownArtistLines, xFront + pad, titleY, {
-    size: 3, lineHeight: 4, color: data.accent, weight: 600, font, anchor: "start"
+    size: 3, lineHeight, color: data.accent, weight: 600, font, anchor: "start", baseline: "central"
   }));
   const albumY = titleY + Math.max(1, shownArtistLines.length) * 4 + pad;
-  const dateY = PANEL.height - pad - 1;
-  const albumMaxHeight = Math.max(3, dateY - albumY - pad);
-  let infoSize = 3;
-  let albumLines = [];
-  let albumLineHeight = 4;
-  while (infoSize >= 1.8) {
-    albumLineHeight = infoSize * 1.35;
-    const titleLines = approximateWrap(data.album || "", PANEL.front - pad * 2, infoSize);
-    const infoLines = approximateWrap(data.info || "", PANEL.front - pad * 2, infoSize);
-    albumLines = [...titleLines, ...infoLines];
-    if (albumLines.length * albumLineHeight <= albumMaxHeight) break;
-    infoSize -= 0.2;
-  }
-  const titleRows = approximateWrap(data.album || "", PANEL.front - pad * 2, infoSize);
-  const infoRows = approximateWrap(data.info || "", PANEL.front - pad * 2, infoSize);
+  const dateY = dateTop + lineHeight / 2;
+  const albumTop = albumY - lineHeight / 2;
+  const albumMaxHeight = Math.max(0, infoBottom - albumTop);
+  const infoSize = 3;
+  const albumLineHeight = lineHeight;
+  const titleRows = approximateWrap(data.album || "", PANEL.front - pad * 2, infoSize,
+    (text) => measuredTextWidth(text, data.font, 600));
+  const infoRows = approximateWrap(data.info || "", PANEL.front - pad * 2, infoSize,
+    (text) => measuredTextWidth(text, data.font, 400));
+  pieces.push(`<defs><clipPath id="frontInfoClip"><rect x="${xFront + pad}" y="${albumTop}" width="${PANEL.front - 2 * pad}" height="${albumMaxHeight}"/></clipPath></defs><g clip-path="url(#frontInfoClip)">`);
   pieces.push(svgTextLines(titleRows, xFront + pad, albumY, {
-    size: infoSize, lineHeight: albumLineHeight, color: data.text, weight: 600, font, anchor: "start"
+    size: infoSize, lineHeight: albumLineHeight, color: data.text, weight: 600, font, anchor: "start", baseline: "central"
   }));
   pieces.push(svgTextLines(infoRows, xFront + pad, albumY + titleRows.length * albumLineHeight, {
-    size: infoSize, lineHeight: albumLineHeight, color: data.text, weight: 400, font, anchor: "start"
+    size: infoSize, lineHeight: albumLineHeight, color: data.text, weight: 400, font, anchor: "start", baseline: "central"
   }));
+  pieces.push("</g>");
   pieces.push(svgTextLines([data.date], xFront + PANEL.front - pad, dateY, {
-    size: 3, lineHeight: 4, color: data.accent, weight: 400, font, anchor: "end"
+    size: 3, lineHeight, color: data.accent, weight: 400, font, anchor: "end", baseline: "central"
   }));
   pieces.push("</g>");
 
   pieces.push(`<g clip-path="url(#sideATracksClip)">`);
-  const sideATitleLines = approximateWrap(data.sideATitle, innerContentWidth, 3);
-  const sideATitleY = sideAY + 3;
+  const sideATitleLines = approximateWrap(data.sideATitle, innerContentWidth, 3,
+    (text) => measuredTextWidth(text, data.font, 600));
+  const sideATitleY = sideAY + 2;
   const sideATitleHeight = Math.max(3, sideATitleLines.length * 4);
-  const sideASongsGuideY = sideATitleY - 3 + sideATitleHeight + pad;
-  const sideATracksY = sideASongsGuideY + 2.5;
+  const sideASongsGuideY = sideAY + sideATitleHeight + pad;
+  const sideATracksY = sideASongsGuideY + 1.5;
   pieces.push(svgTextLines(sideATitleLines, xInner + pad, sideATitleY, {
-    size: 3, lineHeight: 4, color: data.accent, weight: 600, font, anchor: "start"
+    size: 3, lineHeight: 4, color: data.accent, weight: 600, font, anchor: "start", baseline: "central"
   }));
   pieces.push(renderInnerTracks(
     data.sideASongs, xInner + pad, sideATracksY,
@@ -230,13 +238,14 @@ export function renderArtwork(data, palette, svgElement) {
   pieces.push("</g>");
 
   pieces.push(`<g clip-path="url(#sideBTracksClip)">`);
-  const sideBTitleLines = approximateWrap(data.sideBTitle, innerContentWidth, 3);
-  const sideBTitleY = sideBY + 3;
+  const sideBTitleLines = approximateWrap(data.sideBTitle, innerContentWidth, 3,
+    (text) => measuredTextWidth(text, data.font, 600));
+  const sideBTitleY = sideBY + 2;
   const sideBTitleHeight = Math.max(3, sideBTitleLines.length * 4);
-  const sideBSongsGuideY = sideBTitleY - 3 + sideBTitleHeight + pad;
-  const sideBTracksY = sideBSongsGuideY + 2.5;
+  const sideBSongsGuideY = sideBY + sideBTitleHeight + pad;
+  const sideBTracksY = sideBSongsGuideY + 1.5;
   pieces.push(svgTextLines(sideBTitleLines, xInner + pad, sideBTitleY, {
-    size: 3, lineHeight: 4, color: data.accent, weight: 600, font, anchor: "start"
+    size: 3, lineHeight: 4, color: data.accent, weight: 600, font, anchor: "start", baseline: "central"
   }));
   pieces.push(renderInnerTracks(
     data.sideBSongs, xInner + pad, sideBTracksY,
@@ -256,9 +265,8 @@ export function renderArtwork(data, palette, svgElement) {
   svgElement.innerHTML = pieces.join("");
   const alignSidePanelCopy = () => {
     const copy = svgElement.querySelector("#side-panel-copy");
-    const text = copy?.querySelector("text");
-    if (!copy || !text) return;
-    const bounds = text.getBBox();
+    if (!copy) return;
+    const bounds = copy.getBBox();
     const safeCenter = pad + (PANEL.side - 2 * pad) / 2;
     copy.setAttribute("transform", `translate(0 ${safeCenter - bounds.y - bounds.height / 2})`);
   };
@@ -301,7 +309,7 @@ function renderLayoutGuides(layout) {
     const titleHeight = Math.max(3, titleLines.length * 4);
     const songsBottom = blockY + innerBlockHeight;
     return [
-      rect(xInner + pad, titleY - 3, innerContentWidth, titleHeight),
+      rect(xInner + pad, titleY - 2, innerContentWidth, titleHeight),
       rect(xInner + pad, songsY, innerContentWidth, songsBottom - songsY)
     ].join("");
   };
@@ -318,9 +326,9 @@ function renderLayoutGuides(layout) {
       ${rect(pad, pad, sideTextWidth, PANEL.side - 2 * pad)}
       ${rect(paletteStart, pad, paletteEnd - paletteStart, PANEL.side - 2 * pad)}
     </g>
-    ${rect(xFront + pad, titleY - 3, PANEL.front - 2 * pad, Math.max(4, shownArtistLines.length * 4))}
-    ${rect(xFront + pad, albumY - 3, PANEL.front - 2 * pad, albumMaxHeight)}
-    ${rect(xFront + pad, dateY - 3, PANEL.front - 2 * pad, 4)}
+    ${rect(xFront + pad, titleY - 2, PANEL.front - 2 * pad, Math.max(4, shownArtistLines.length * 4))}
+    ${rect(xFront + pad, albumY - 2, PANEL.front - 2 * pad, albumMaxHeight)}
+    ${rect(xFront + pad, dateY - 2, PANEL.front - 2 * pad, 4)}
     ${innerGuides(sideAY, sideATitleLines, sideATitleY, sideASongsGuideY)}
     ${innerGuides(sideBY, sideBTitleLines, sideBTitleY, sideBSongsGuideY)}
   </g>`;
@@ -336,12 +344,13 @@ function renderInnerTracks(tracks, x, startY, columnWidth, textColor, accentColo
   const pieces = [];
 
   tracks.forEach((track, index) => {
-    const lines = approximateWrap(track.title, titleWidth, fontSize);
+    const lines = approximateWrap(track.title, titleWidth, fontSize,
+      (text) => measuredTextWidth(text, font, 400));
     pieces.push(svgTextLines([`${index + 1}.`], x, y, {
-      size: fontSize, lineHeight, color: textColor, weight: 400, font, anchor: "start"
+      size: fontSize, lineHeight, color: textColor, weight: 400, font, anchor: "start", baseline: "central"
     }));
     pieces.push(svgTextLines(lines, titleX, y, {
-      size: fontSize, lineHeight, color: track.highlighted ? accentColor : textColor, weight: 400, font, anchor: "start"
+      size: fontSize, lineHeight, color: track.highlighted ? accentColor : textColor, weight: 400, font, anchor: "start", baseline: "central"
     }));
     y += Math.max(1, lines.length) * lineHeight;
   });

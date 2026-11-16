@@ -27,7 +27,7 @@ function getCardTitle(album) {
 }
 
 function createCard(data = createDefaultCardState()) {
-  return { id: createCardId(), title: getCardTitle(data.album), data };
+  return { id: createCardId(), title: getCardTitle(data.album), includeInPdf: true, data };
 }
 
 function normalizeCard(card) {
@@ -65,7 +65,7 @@ function normalizeCard(card) {
     !validTracks(data.sideASongs) ||
     !validTracks(data.sideBSongs)
   ) return null;
-  return { id: card.id, title: getCardTitle(data.album), data };
+  return { id: card.id, title: getCardTitle(data.album), includeInPdf: card.includeInPdf !== false, data };
 }
 
 function App() {
@@ -85,10 +85,10 @@ function App() {
   const persistenceAvailable = useRef(true);
   const saveTimer = useRef(null);
 
-  const scheduleSave = useCallback(() => {
+  const scheduleSave = useCallback((immediate = false) => {
     if (!workspaceLoaded.current || !persistenceAvailable.current) return;
     clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
+    const persist = () => {
       saveTimer.current = null;
       saveWorkspace({
         cards: cardsRef.current,
@@ -97,7 +97,9 @@ function App() {
         persistenceAvailable.current = false;
         showEditorMessage(`Could not save designs locally: ${error.message}`, true);
       });
-    }, 350);
+    };
+    if (immediate) persist();
+    else saveTimer.current = setTimeout(persist, 350);
   }, []);
 
   const syncColors = useCallback((data) => {
@@ -265,6 +267,18 @@ function App() {
 
   const reset = useCallback(() => resetEditor(), []);
 
+  const setIncludeInPdf = (includeInPdf) => {
+    const data = captureCardState();
+    const nextCards = cardsRef.current.map((card) =>
+      card.id === activeCardIdRef.current
+        ? { ...card, title: getCardTitle(data.album), data, includeInPdf }
+        : card
+    );
+    cardsRef.current = nextCards;
+    setCards(nextCards);
+    scheduleSave(true);
+  };
+
   const handleExport = async (paperSize, colorMode) => {
     const currentData = captureCardState();
     const exportCards = cardsRef.current.map((card) =>
@@ -274,9 +288,14 @@ function App() {
     );
     cardsRef.current = exportCards;
     scheduleSave();
+    const includedCards = exportCards.filter((card) => card.includeInPdf !== false);
+    if (!includedCards.length) {
+      showEditorMessage("Select at least one J-card to include in the PDF.", true);
+      return;
+    }
     setExporting(true);
     try {
-      await exportArtwork(exportCards.map((card) => card.data), paperSize, colorMode);
+      await exportArtwork(includedCards.map((card) => card.data), paperSize, colorMode);
     } finally {
       setExporting(false);
     }
@@ -315,6 +334,9 @@ function App() {
             onCloseCard={closeCard}
             onRegisterTitleUpdater={registerTitleUpdater}
             onExport={handleExport}
+            includeInPdf={cards.find((card) => card.id === activeCardId)?.includeInPdf !== false}
+            onIncludeInPdfChange={setIncludeInPdf}
+            hasIncludedCards={cards.some((card) => card.includeInPdf !== false)}
             exporting={exporting}
           />
           <TrackListEditor />

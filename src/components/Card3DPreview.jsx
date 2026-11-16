@@ -29,52 +29,38 @@ async function createPanelTextures(sourceSvg) {
   if (viewBox.length !== 4 || viewBox.some((value) => !Number.isFinite(value))) {
     throw new Error("The J-card preview has invalid dimensions.");
   }
-  const [viewX, viewY, viewWidth, viewHeight] = viewBox;
-  const width = Math.ceil(viewWidth * TEXTURE_SCALE);
-  const height = Math.ceil(viewHeight * TEXTURE_SCALE);
   const svg = sourceSvg.cloneNode(true);
   svg.removeAttribute("id");
   svg.removeAttribute("class");
   svg.removeAttribute("style");
   svg.querySelectorAll(".screen-only, .print-guides").forEach((element) => element.remove());
-  svg.setAttribute("width", `${width}px`);
-  svg.setAttribute("height", `${height}px`);
-
-  const objectUrl = URL.createObjectURL(new Blob(
-    [new XMLSerializer().serializeToString(svg)],
-    { type: "image/svg+xml;charset=utf-8" }
-  ));
-  try {
-    const image = await loadImage(objectUrl);
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext("2d");
-    if (!context) throw new Error("This browser cannot render the 3D preview.");
-    context.drawImage(image, 0, 0, width, height);
-
-    return Object.fromEntries(Object.entries(panelRanges).map(([name, range]) => {
+  // Rasterize each exact panel boundary, without rounding a crop of the full card.
+  // Cropping the full raster can pick up pixels from the adjacent panel or bleed.
+  return Object.fromEntries(await Promise.all(Object.entries(panelRanges).map(async ([name, range]) => {
+    const panelSvg = svg.cloneNode(true);
+    const width = Math.ceil(range.width * TEXTURE_SCALE);
+    const height = Math.ceil(PANEL.height * TEXTURE_SCALE);
+    panelSvg.setAttribute("viewBox", `${range.x} 0 ${range.width} ${PANEL.height}`);
+    panelSvg.setAttribute("width", `${width}px`);
+    panelSvg.setAttribute("height", `${height}px`);
+    panelSvg.setAttribute("preserveAspectRatio", "none");
+    const objectUrl = URL.createObjectURL(new Blob(
+      [new XMLSerializer().serializeToString(panelSvg)],
+      { type: "image/svg+xml;charset=utf-8" }
+    ));
+    try {
+      const image = await loadImage(objectUrl);
       const panelCanvas = document.createElement("canvas");
-      panelCanvas.width = Math.ceil(range.width * TEXTURE_SCALE);
-      panelCanvas.height = Math.ceil(PANEL.height * TEXTURE_SCALE);
+      panelCanvas.width = width;
+      panelCanvas.height = height;
       const panelContext = panelCanvas.getContext("2d");
       if (!panelContext) throw new Error("This browser cannot render the 3D preview.");
-      panelContext.drawImage(
-        canvas,
-        Math.round((range.x - viewX) * TEXTURE_SCALE),
-        Math.round((0 - viewY) * TEXTURE_SCALE),
-        panelCanvas.width,
-        panelCanvas.height,
-        0,
-        0,
-        panelCanvas.width,
-        panelCanvas.height
-      );
+      panelContext.drawImage(image, 0, 0, width, height);
       return [name, panelCanvas.toDataURL("image/png")];
-    }));
-  } finally {
-    URL.revokeObjectURL(objectUrl);
-  }
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  })));
 }
 
 function PanelTexture({ src, widthMm, className = "" }) {
@@ -94,7 +80,20 @@ export default function Card3DPreview() {
   const [textures, setTextures] = useState(null);
   const [error, setError] = useState("");
   const [rotation, setRotation] = useState({ x: -12, y: -18 });
+  const [zoom, setZoom] = useState(1);
+  const stageRef = useRef(null);
   const dragStart = useRef(null);
+
+  useEffect(() => {
+    const stage = stageRef.current;
+    const onWheel = (event) => {
+      event.preventDefault();
+      const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? stage.clientHeight : 1);
+      setZoom((current) => Math.max(0.5, Math.min(2.5, current * Math.exp(-delta * 0.0015))));
+    };
+    stage.addEventListener("wheel", onWheel, { passive: false });
+    return () => stage.removeEventListener("wheel", onWheel);
+  }, []);
 
   useEffect(() => {
     const sourceSvg = document.querySelector("#artwork");
@@ -154,7 +153,7 @@ export default function Card3DPreview() {
   const modelStyle = {
     width: CASE_WIDTH,
     height: CASE_HEIGHT,
-    transform: `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`,
+    transform: `scale(${zoom}) rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`,
     "--case-depth": `${CASE_DEPTH}px`,
     "--case-width": `${CASE_WIDTH}px`,
     "--case-height": `${CASE_HEIGHT}px`
@@ -163,7 +162,8 @@ export default function Card3DPreview() {
   return (
     <div
       className="card3d-stage"
-      aria-label="3D J-card preview. Drag to rotate."
+      ref={stageRef}
+      aria-label="3D J-card preview. Drag to rotate. Scroll to zoom."
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -194,11 +194,11 @@ export default function Card3DPreview() {
               <PanelTexture src={textures?.side} widthMm={PANEL.side} className="card3d-spine-texture" />
             </div>
             <div className="card3d-face card3d-spine-reverse" />
-            <div className="card3d-face card3d-wall card3d-top-wall" />
-            <div className="card3d-face card3d-wall card3d-bottom-wall" />
-            <div className="card3d-face card3d-wall card3d-right-wall" />
+            <div className="card3d-face card3d-wall card3d-top-wall"><div className="card3d-glass" /></div>
+            <div className="card3d-face card3d-wall card3d-bottom-wall"><div className="card3d-glass" /></div>
+            <div className="card3d-face card3d-wall card3d-right-wall"><div className="card3d-glass" /></div>
           </div>
-          <span className="card3d-hint">Drag to rotate</span>
+          <span className="card3d-hint">Drag to rotate · Scroll to zoom · {Math.round(zoom * 100)}%</span>
         </>
       )}
     </div>
