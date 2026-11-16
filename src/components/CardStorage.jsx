@@ -31,7 +31,8 @@ const CardSpine = React.memo(function CardSpine({ data }) {
 
 export default function CardStorage({ cards, activeCardId, onSelectCard, onAddCard, onCloseCard }) {
   return (
-    <aside className="storage-sidebar" aria-label="Cassette storage">
+    <aside className="storage-sidebar" aria-label="Cassette storage"
+      style={{ "--spine-width": `${PANEL.height}mm`, "--spine-aspect": PANEL.height / PANEL.side }}>
       <div className="editor-heading">
         <h2>Storage</h2>
         <button className="storage-add" type="button" aria-label="Add J-card" onClick={onAddCard}>+ Add</button>
