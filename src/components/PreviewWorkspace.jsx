@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import Card3DPreview from "./Card3DPreview.jsx";
 import useArtworkViewport from "./useArtworkViewport.js";
 
-function PreviewToolbar({ viewMode, onViewModeToggle, onFit }) {
+function PreviewToolbar({ viewMode, onViewModeToggle, onFit, onActualSize, isActualSize }) {
   return (
     <nav className="preview-toolbar" aria-label="Preview controls">
       <button
@@ -28,7 +28,11 @@ function PreviewToolbar({ viewMode, onViewModeToggle, onFit }) {
           <span>Fold &amp; cut marks</span>
         </label>
       </div>
-      {viewMode === "2d" && <button className="preview-fit" type="button" onClick={onFit}>Fit</button>}
+      {viewMode === "2d" && <div className="preview-scale-controls">
+        <button className="preview-fit" type="button" onClick={onFit}>Fit</button>
+        <button className="preview-fit" type="button" onClick={onActualSize} aria-pressed={isActualSize}
+          title="Use artwork dimensions in CSS millimeters. Physical size depends on browser zoom and display scaling.">1:1 (mm)</button>
+      </div>}
     </nav>
   );
 }
@@ -91,7 +95,8 @@ export default function PreviewWorkspace({
   const viewport = useArtworkViewport(viewMode === "2d");
   return (
     <section className="preview-area" aria-label="J-card preview">
-      <PreviewToolbar viewMode={viewMode} onViewModeToggle={() => setViewMode((mode) => mode === "2d" ? "3d" : "2d")} onFit={viewport.reset} />
+      <PreviewToolbar viewMode={viewMode} onViewModeToggle={() => setViewMode((mode) => mode === "2d" ? "3d" : "2d")}
+        onFit={viewport.reset} onActualSize={viewport.actualSize} isActualSize={viewport.camera.actualSize && viewport.camera.zoom === 1} />
       <div className="preview-main">
         <div className={`artwork-wrap${viewMode === "3d" ? " is-3d" : ""}`} ref={viewport.viewportRef}
           {...viewport.handlers} onDragStart={(event) => event.preventDefault()}>

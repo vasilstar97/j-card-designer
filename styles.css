@@ -186,6 +186,8 @@ h1, h2 { margin: 0; font-size: 20px; letter-spacing: -.55px; }
 #artwork { display: block; width: 100%; height: 100%; background: #fff; pointer-events: none; }
 .canvas-hint { position: absolute; bottom: 10px; right: 12px; color: #555; font-size: 10px; pointer-events: none; }
 .preview-fit { padding: 5px 9px; border: 1px solid #d9d9d9; border-radius: 6px; background: #fff; color: #444; font-size: 11px; }
+.preview-scale-controls { display: flex; gap: 6px; }
+.preview-fit[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
 .preview-mode-toggle { flex: 0 0 38px; min-width: 38px; height: 30px; padding: 0 9px; border: 1px solid #d9d9d9; border-radius: 6px; background: #fff; color: var(--ink); font-size: 11px; font-weight: 600; box-shadow: 0 1px 3px #00000014; }
 .preview-mode-toggle:hover { border-color: var(--accent); color: var(--accent); }
 .artwork-wrap.is-3d { display: flex; }

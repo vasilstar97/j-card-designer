@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { BLEED_MM, MARK_EXTENSION_MM, PANEL } from "../editor/constants.js";
 
 const margin = BLEED_MM + MARK_EXTENSION_MM;
-const aspectRatio = (PANEL.back + PANEL.side + PANEL.front + PANEL.inner + 2 * margin) / (PANEL.height + 2 * margin);
-const initialCamera = { x: 0, y: 0, zoom: 1 };
+const artworkWidth = PANEL.back + PANEL.side + PANEL.front + PANEL.inner + 2 * margin;
+const artworkHeight = PANEL.height + 2 * margin;
+const aspectRatio = artworkWidth / artworkHeight;
+const initialCamera = { x: 0, y: 0, zoom: 1, actualSize: false };
 
 export default function useArtworkViewport(enabled) {
   const viewportRef = useRef(null);
@@ -33,7 +35,7 @@ export default function useArtworkViewport(enabled) {
       setCamera((current) => {
         const zoom = Math.max(0.1, Math.min(8, current.zoom * Math.exp(-delta * 0.0015)));
         const ratio = zoom / current.zoom;
-        return { zoom, x: x - (x - current.x) * ratio, y: y - (y - current.y) * ratio };
+        return { ...current, zoom, x: x - (x - current.x) * ratio, y: y - (y - current.y) * ratio };
       });
     };
     viewport.addEventListener("wheel", onWheel, { passive: false });
@@ -60,9 +62,10 @@ export default function useArtworkViewport(enabled) {
     viewportRef,
     camera,
     reset: () => { drag.current = null; setCamera(initialCamera); },
+    actualSize: () => { drag.current = null; setCamera({ ...initialCamera, actualSize: true }); },
     planeStyle: {
-      width: fitWidth,
-      height: fitWidth / aspectRatio,
+      width: camera.actualSize ? `${artworkWidth}mm` : fitWidth,
+      height: camera.actualSize ? `${artworkHeight}mm` : fitWidth / aspectRatio,
       transform: `translate(-50%, -50%) translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`
     },
     handlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp, onLostPointerCapture: () => { drag.current = null; } }
