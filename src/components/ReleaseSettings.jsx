@@ -1,7 +1,8 @@
 import React from "react";
 import Button from "antd/es/button";
 import Upload from "antd/es/upload";
-import { DesignColorControl, PaletteColorControl } from "./ColorControls.jsx";
+import { DesignColorControl } from "./ColorControls.jsx";
+import PaletteEditor from "./PaletteEditor.jsx";
 import { PANEL } from "../editor/constants.js";
 
 const { Dragger } = Upload;
@@ -12,10 +13,11 @@ function ReleaseSettings({
   paletteColors,
   designColors,
   onPaletteColorChange,
+  onPaletteReorder,
   onDesignColorChange
 }) {
   return (
-    <aside className="editor" aria-label="Design settings">
+    <div className="release-settings" aria-label="Design settings">
       <div className="editor-heading">
         <h1>Design</h1>
         <Button className="text-button" type="text" htmlType="button" onClick={onReset}>Reset</Button>
@@ -65,17 +67,7 @@ function ReleaseSettings({
           <section className="color-settings" aria-label="Artwork colors">
             <div className="palette-setting">
               <div className="color-setting-label">Palette</div>
-              <div className="palette-colors">
-                {paletteColors.map((color, index) => (
-                  <PaletteColorControl
-                    key={index}
-                    index={index}
-                    color={color}
-                    onChange={(value) => onPaletteColorChange(index, value)}
-                    onPick={(value) => onPaletteColorChange(index, value)}
-                  />
-                ))}
-              </div>
+              <PaletteEditor colors={paletteColors} onChange={onPaletteColorChange} onReorder={onPaletteReorder} />
             </div>
             <div className="design-colors">
               <DesignColorControl
@@ -100,7 +92,7 @@ function ReleaseSettings({
           </section>
         </div>
       </div>
-    </aside>
+    </div>
   );
 }
 

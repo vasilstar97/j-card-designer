@@ -295,6 +295,43 @@ function renderPrintGuides({ totalWidth, xSide, xFront, xInner, bleed }) {
   </g>`;
 }
 
+function renderGuideLines(rectangles, segments = []) {
+  const lines = [...segments];
+  for (const [x, y, width, height] of rectangles) {
+    if (width <= 0 || height <= 0) continue;
+    lines.push([x, y, x + width, y], [x, y + height, x + width, y + height],
+      [x, y, x, y + height], [x + width, y, x + width, y + height]);
+  }
+  const round = (value) => Number(value.toFixed(6));
+  const groups = new Map();
+  for (const [x1, y1, x2, y2] of lines) {
+    const horizontal = y1 === y2;
+    const fixed = round(horizontal ? y1 : x1);
+    const key = `${horizontal ? "h" : "v"}:${fixed}`;
+    if (!groups.has(key)) groups.set(key, { horizontal, fixed, ranges: [] });
+    groups.get(key).ranges.push([
+      round(Math.min(horizontal ? x1 : y1, horizontal ? x2 : y2)),
+      round(Math.max(horizontal ? x1 : y1, horizontal ? x2 : y2))
+    ]);
+  }
+  const pieces = [];
+  for (const { horizontal, fixed, ranges } of groups.values()) {
+    ranges.sort((a, b) => a[0] - b[0]);
+    const merged = [];
+    for (const range of ranges) {
+      const previous = merged.at(-1);
+      if (previous && range[0] <= previous[1]) previous[1] = Math.max(previous[1], range[1]);
+      else merged.push([...range]);
+    }
+    for (const [start, end] of merged) {
+      // Align dash phase to the artwork axes, rather than each rectangle's perimeter.
+      const path = horizontal ? `M${start} ${fixed}H${end}` : `M${fixed} ${start}V${end}`;
+      pieces.push(`<path d="${path}" stroke-dashoffset="${round(start % 2)}"/>`);
+    }
+  }
+  return pieces.join("");
+}
+
 function renderLayoutGuides(layout) {
   const {
     xBack, xSide, xFront, xInner, coverBound, pad, innerBlockHeight,
@@ -303,35 +340,32 @@ function renderLayoutGuides(layout) {
     sideATitleLines, sideATitleY, sideASongsGuideY,
     sideBTitleLines, sideBTitleY, sideBSongsGuideY
   } = layout;
-  const rect = (x, y, width, height) =>
-    `<rect x="${x}" y="${y}" width="${Math.max(0, width)}" height="${Math.max(0, height)}"/>`;
   const innerGuides = (blockY, titleLines, titleY, songsY) => {
     const titleHeight = Math.max(3, titleLines.length * 4);
     const songsBottom = blockY + innerBlockHeight;
     return [
-      rect(xInner + pad, titleY - 2, innerContentWidth, titleHeight),
-      rect(xInner + pad, songsY, innerContentWidth, songsBottom - songsY)
-    ].join("");
+      [xInner + pad, titleY - 2, innerContentWidth, titleHeight],
+      [xInner + pad, songsY, innerContentWidth, songsBottom - songsY]
+    ];
   };
-  return `  <g class="screen-only grid-guides" fill="none" stroke="#777" stroke-width=".35" stroke-dasharray="2 1.5" opacity=".85">
-    ${rect(xBack, 0, PANEL.back, PANEL.height)}
-    ${rect(xSide, 0, PANEL.side, PANEL.height)}
-    ${rect(xFront, 0, PANEL.front, PANEL.height)}
-    ${rect(xInner, 0, PANEL.inner, PANEL.height)}
-  <line x1="${xFront}" y1="${coverBound}" x2="${xFront + PANEL.front}" y2="${coverBound}"/>
-  </g>
-  <g class="screen-only padding-guides" fill="none" stroke="#999" stroke-width=".25" stroke-dasharray="1 1" opacity=".8">
-    ${rect(xBack + pad, pad, PANEL.back - 2 * pad, PANEL.height - 2 * pad)}
-    <g transform="translate(${xSide + PANEL.side} 0) rotate(90)">
-      ${rect(pad, pad, sideTextWidth, PANEL.side - 2 * pad)}
-      ${rect(paletteStart, pad, paletteEnd - paletteStart, PANEL.side - 2 * pad)}
-    </g>
-    ${rect(xFront + pad, titleY - 2, PANEL.front - 2 * pad, Math.max(4, shownArtistLines.length * 4))}
-    ${rect(xFront + pad, albumY - 2, PANEL.front - 2 * pad, albumMaxHeight)}
-    ${rect(xFront + pad, dateY - 2, PANEL.front - 2 * pad, 4)}
-    ${innerGuides(sideAY, sideATitleLines, sideATitleY, sideASongsGuideY)}
-    ${innerGuides(sideBY, sideBTitleLines, sideBTitleY, sideBSongsGuideY)}
-  </g>`;
+  const totalWidth = xInner + PANEL.inner;
+  const grid = renderGuideLines([[xBack, 0, totalWidth, PANEL.height]], [
+    ...[xSide, xFront, xInner].map((x) => [x, 0, x, PANEL.height]),
+    [xFront, coverBound, xFront + PANEL.front, coverBound]
+  ]);
+  const padding = renderGuideLines([
+    [xBack + pad, pad, PANEL.back - 2 * pad, PANEL.height - 2 * pad],
+    [xSide + pad, pad, PANEL.side - 2 * pad, sideTextWidth],
+    [xSide + pad, paletteStart, PANEL.side - 2 * pad, paletteEnd - paletteStart],
+    [xFront + pad, titleY - 2, PANEL.front - 2 * pad, Math.max(4, shownArtistLines.length * 4)],
+    [xFront + pad, albumY - 2, PANEL.front - 2 * pad, albumMaxHeight],
+    [xFront + pad, dateY - 2, PANEL.front - 2 * pad, 4],
+    ...innerGuides(sideAY, sideATitleLines, sideATitleY, sideASongsGuideY),
+    ...innerGuides(sideBY, sideBTitleLines, sideBTitleY, sideBSongsGuideY)
+  ]);
+  const style = 'fill="none" stroke="#999" stroke-width=".25" stroke-dasharray="1 1" stroke-linecap="butt" opacity=".8"';
+  return `<g class="screen-only grid-guides" ${style}>${grid}</g>
+    <g class="screen-only padding-guides" ${style}>${padding}</g>`;
 }
 
 function renderInnerTracks(tracks, x, startY, columnWidth, textColor, accentColor, font) {

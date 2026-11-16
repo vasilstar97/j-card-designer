@@ -6,6 +6,7 @@ import {
   exportArtwork,
   installEvents,
   loadImageFile,
+  movePaletteColor,
   resetEditor,
   restoreCardState,
   setDesignColor as setEditorDesignColor,
@@ -16,6 +17,7 @@ import { loadWorkspace, saveWorkspace } from "./editor/storage.js";
 import PreviewWorkspace from "./components/PreviewWorkspace.jsx";
 import ReleaseSettings from "./components/ReleaseSettings.jsx";
 import TrackListEditor from "./components/TrackListEditor.jsx";
+import CardStorage from "./components/CardStorage.jsx";
 import { colorDefaults, PANEL } from "./editor/constants.js";
 
 function createCardId() {
@@ -80,7 +82,6 @@ function App() {
 
   const cardsRef = useRef(cards);
   const activeCardIdRef = useRef(activeCardId);
-  const titleUpdater = useRef(null);
   const workspaceLoaded = useRef(false);
   const persistenceAvailable = useRef(true);
   const saveTimer = useRef(null);
@@ -117,17 +118,13 @@ function App() {
     );
   }, []);
 
-  const registerTitleUpdater = useCallback((updater) => {
-    titleUpdater.current = updater;
-  }, []);
-
   const updateActiveCard = useCallback((data) => {
     const activeId = activeCardIdRef.current;
     const nextCards = cardsRef.current.map((card) =>
       card.id === activeId ? { ...card, title: getCardTitle(data.album), data } : card
     );
     cardsRef.current = nextCards;
-    titleUpdater.current?.(activeId, getCardTitle(data.album));
+    setCards(nextCards);
     syncColors(data);
     scheduleSave();
   }, [scheduleSave, syncColors]);
@@ -204,6 +201,11 @@ function App() {
     const hex = value.toUpperCase();
     setPaletteColors((colors) => colors.map((color, i) => i === index ? hex : color));
     setPaletteColor(index, hex);
+  };
+
+  const reorderPaletteColors = (from, to) => {
+    movePaletteColor(from, to);
+    scheduleSave(true);
   };
 
   const selectCard = (nextId) => {
@@ -318,28 +320,31 @@ function App() {
     >
       <>
         <main className={`workspace${workspaceReady ? "" : " workspace-loading"}`} aria-busy={!workspaceReady}>
-          <ReleaseSettings
-            onCoverFile={loadImageFile}
-            onReset={reset}
-            paletteColors={paletteColors}
-            designColors={designColors}
-            onPaletteColorChange={updatePaletteColor}
-            onDesignColorChange={updateDesignColor}
-          />
-          <PreviewWorkspace
+          <CardStorage
             cards={cards}
             activeCardId={activeCardId}
             onSelectCard={selectCard}
             onAddCard={addCard}
             onCloseCard={closeCard}
-            onRegisterTitleUpdater={registerTitleUpdater}
+          />
+          <PreviewWorkspace
             onExport={handleExport}
             includeInPdf={cards.find((card) => card.id === activeCardId)?.includeInPdf !== false}
             onIncludeInPdfChange={setIncludeInPdf}
             hasIncludedCards={cards.some((card) => card.includeInPdf !== false)}
             exporting={exporting}
           />
-          <TrackListEditor />
+          <TrackListEditor>
+            <ReleaseSettings
+              onCoverFile={loadImageFile}
+              onReset={reset}
+              paletteColors={paletteColors}
+              designColors={designColors}
+              onPaletteColorChange={updatePaletteColor}
+              onPaletteReorder={reorderPaletteColors}
+              onDesignColorChange={updateDesignColor}
+            />
+          </TrackListEditor>
         </main>
         <input id="background-color" type="color" defaultValue="#000000" hidden />
         <input id="accent-color" type="color" defaultValue="#F55E36" hidden />

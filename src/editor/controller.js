@@ -138,6 +138,14 @@ export function setPaletteColor(index, color) {
   updateArtwork();
 }
 
+export function movePaletteColor(from, to) {
+  if (!Number.isInteger(from) || !Number.isInteger(to) || from === to ||
+      from < 0 || to < 0 || from >= palette.length || to >= palette.length) return;
+  const [color] = palette.splice(from, 1);
+  palette.splice(to, 0, color);
+  updateArtwork();
+}
+
 export function setDesignColor(name, color) {
   const input = $(`#${name}-color`);
   input.value = color.toUpperCase();

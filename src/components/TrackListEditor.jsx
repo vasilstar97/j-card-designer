@@ -30,21 +30,18 @@ function TrackSide({ side }) {
   );
 }
 
-function TrackListEditor() {
+function TrackListEditor({ children }) {
   return (
-    <aside className="inner-editor" aria-label="Inner panel settings">
-      <div className="editor-heading">
-        <h2>Track list</h2>
-      </div>
+    <aside className="editor inner-editor editor-sidebar" aria-label="Editor settings">
       <Tabs
         className="tracks-tabs"
-        defaultActiveKey="a"
-        items={["a", "b"].map((side) => ({
+        defaultActiveKey="design"
+        items={[{ key: "design", label: "Design", forceRender: true, children }, ...["a", "b"].map((side) => ({
           key: side,
           label: `Side ${side.toUpperCase()}`,
           forceRender: true,
           children: <TrackSide side={side} />
-        }))}
+        }))]}
       />
     </aside>
   );

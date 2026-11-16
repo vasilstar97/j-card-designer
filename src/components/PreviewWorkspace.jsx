@@ -1,65 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import Card3DPreview from "./Card3DPreview.jsx";
+import useArtworkViewport from "./useArtworkViewport.js";
 
-function CardTabs({ cards, activeCardId, onSelectCard, onAddCard, onCloseCard, onRegisterTitleUpdater }) {
-  const [titleOverride, setTitleOverride] = useState(null);
-  useEffect(() => {
-    onRegisterTitleUpdater((id, title) => setTitleOverride({ id, title }));
-    return () => onRegisterTitleUpdater(null);
-  }, [onRegisterTitleUpdater]);
-  useEffect(() => setTitleOverride(null), [activeCardId, cards]);
-
+function PreviewToolbar({ viewMode, onViewModeToggle, onFit }) {
   return (
-    <div className="card-tabs" role="tablist" aria-label="J-card designs">
-      {cards.map((card) => {
-        const title = titleOverride?.id === card.id ? titleOverride.title : card.title;
-        return (
-          <div className="card-tab-item" role="presentation" key={card.id}>
-            <button
-              className="card-tab"
-              type="button"
-              role="tab"
-              aria-selected={card.id === activeCardId}
-              onClick={() => onSelectCard(card.id)}
-              title={title}
-            >
-              {title}
-            </button>
-            {cards.length > 1 && (
-              <button
-                className="card-tab-close"
-                type="button"
-                aria-label={`Close ${title}`}
-                onClick={() => onCloseCard(card.id)}
-              >
-                ×
-              </button>
-            )}
-          </div>
-        );
-      })}
-      <button className="card-tab-add" type="button" aria-label="Add J-card" onClick={onAddCard}>
-        +
-      </button>
-    </div>
-  );
-}
-
-function PreviewFooter({
-  onExport,
-  exporting,
-  includeInPdf,
-  onIncludeInPdfChange,
-  hasIncludedCards,
-  paperSize,
-  onPaperSizeChange,
-  colorMode,
-  onColorModeChange,
-  viewMode,
-  onViewModeToggle
-}) {
-  return (
-    <footer className="preview-footer" aria-label="Preview and export controls">
+    <nav className="preview-toolbar" aria-label="Preview controls">
       <button
         className="preview-mode-toggle"
         type="button"
@@ -69,7 +14,7 @@ function PreviewFooter({
       >
         {viewMode === "2d" ? "3D" : "2D"}
       </button>
-      <div className="preview-footer-options">
+      <div className="preview-guide-options">
         <label className="guide-toggle">
           <input id="show-grid" type="checkbox" defaultChecked />
           <span>Grid</span>
@@ -83,6 +28,24 @@ function PreviewFooter({
           <span>Fold &amp; cut marks</span>
         </label>
       </div>
+      {viewMode === "2d" && <button className="preview-fit" type="button" onClick={onFit}>Fit</button>}
+    </nav>
+  );
+}
+
+function PreviewFooter({
+  onExport,
+  exporting,
+  includeInPdf,
+  onIncludeInPdfChange,
+  hasIncludedCards,
+  paperSize,
+  onPaperSizeChange,
+  colorMode,
+  onColorModeChange
+}) {
+  return (
+    <footer className="preview-footer" aria-label="PDF export controls">
       <div className="export-actions">
         <label className="guide-toggle" title="Include this J-card in the exported PDF">
           <input type="checkbox" checked={includeInPdf} onChange={(event) => onIncludeInPdfChange(event.target.checked)} />
@@ -116,12 +79,6 @@ function PreviewFooter({
 }
 
 export default function PreviewWorkspace({
-  cards,
-  activeCardId,
-  onSelectCard,
-  onAddCard,
-  onCloseCard,
-  onRegisterTitleUpdater,
   onExport,
   exporting,
   includeInPdf,
@@ -131,20 +88,18 @@ export default function PreviewWorkspace({
   const [paperSize, setPaperSize] = useState("A4");
   const [colorMode, setColorMode] = useState("RGB");
   const [viewMode, setViewMode] = useState("2d");
+  const viewport = useArtworkViewport(viewMode === "2d");
   return (
     <section className="preview-area" aria-label="J-card preview">
-      <CardTabs
-        cards={cards}
-        activeCardId={activeCardId}
-        onSelectCard={onSelectCard}
-        onAddCard={onAddCard}
-        onCloseCard={onCloseCard}
-        onRegisterTitleUpdater={onRegisterTitleUpdater}
-      />
+      <PreviewToolbar viewMode={viewMode} onViewModeToggle={() => setViewMode((mode) => mode === "2d" ? "3d" : "2d")} onFit={viewport.reset} />
       <div className="preview-main">
-        <div className={`artwork-wrap${viewMode === "3d" ? " is-3d" : ""}`}>
-          <svg id="artwork" xmlns="http://www.w3.org/2000/svg" aria-label="J-card artwork preview" />
+        <div className={`artwork-wrap${viewMode === "3d" ? " is-3d" : ""}`} ref={viewport.viewportRef}
+          {...viewport.handlers} onDragStart={(event) => event.preventDefault()}>
+          <div className="artwork-plane" style={viewport.planeStyle}>
+            <svg id="artwork" xmlns="http://www.w3.org/2000/svg" aria-label="J-card artwork preview" />
+          </div>
           {viewMode === "3d" && <Card3DPreview />}
+          {viewMode === "2d" && <span className="canvas-hint">Drag to move · Scroll to zoom · {Math.round(viewport.camera.zoom * 100)}%</span>}
         </div>
         <div className="canvas-footer">
           <span id="image-status" aria-live="polite" />
@@ -160,8 +115,6 @@ export default function PreviewWorkspace({
         onPaperSizeChange={setPaperSize}
         colorMode={colorMode}
         onColorModeChange={setColorMode}
-        viewMode={viewMode}
-        onViewModeToggle={() => setViewMode((mode) => mode === "2d" ? "3d" : "2d")}
       />
     </section>
   );
