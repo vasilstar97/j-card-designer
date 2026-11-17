@@ -39,6 +39,7 @@ function PreviewToolbar({ viewMode, onViewModeToggle, onFit, onActualSize, isAct
 
 function PreviewFooter({
   onExport,
+  onExportCard,
   exporting,
   includeInPdf,
   onIncludeInPdfChange,
@@ -50,6 +51,8 @@ function PreviewFooter({
 }) {
   return (
     <footer className="preview-footer" aria-label="PDF export controls">
+      <button className="button button-light" type="button" onClick={onExportCard}
+        title="Export the current cassette, including its cover and track lists, as .jcard.json">Export cassette</button>
       <div className="export-actions">
         <label className="guide-toggle" title="Include this J-card in the exported PDF">
           <input type="checkbox" checked={includeInPdf} onChange={(event) => onIncludeInPdfChange(event.target.checked)} />
@@ -83,7 +86,9 @@ function PreviewFooter({
 }
 
 export default function PreviewWorkspace({
+  cover,
   onExport,
+  onExportCard,
   exporting,
   includeInPdf,
   onIncludeInPdfChange,
@@ -98,11 +103,14 @@ export default function PreviewWorkspace({
       <PreviewToolbar viewMode={viewMode} onViewModeToggle={() => setViewMode((mode) => mode === "2d" ? "3d" : "2d")}
         onFit={viewport.reset} onActualSize={viewport.actualSize} isActualSize={viewport.camera.actualSize && viewport.camera.zoom === 1} />
       <div className="preview-main">
-        <div className={`artwork-wrap${viewMode === "3d" ? " is-3d" : ""}`} ref={viewport.viewportRef}
+        <div className={`artwork-wrap${viewMode === "3d" ? " is-3d" : ""}${viewMode === "3d" && cover ? " has-cover" : ""}`} ref={viewport.viewportRef}
           {...viewport.handlers} onDragStart={(event) => event.preventDefault()}>
           <div className="artwork-plane" style={viewport.planeStyle}>
             <svg id="artwork" xmlns="http://www.w3.org/2000/svg" aria-label="J-card artwork preview" />
           </div>
+          {viewMode === "3d" && cover && <div className="card3d-backdrop" aria-hidden="true">
+            <img src={cover} alt="" draggable="false" />
+          </div>}
           {viewMode === "3d" && <Card3DPreview />}
           {viewMode === "2d" && <span className="canvas-hint">Drag to move · Scroll to zoom · {Math.round(viewport.camera.zoom * 100)}%</span>}
         </div>
@@ -112,6 +120,7 @@ export default function PreviewWorkspace({
       </div>
       <PreviewFooter
         onExport={onExport}
+        onExportCard={onExportCard}
         exporting={exporting}
         includeInPdf={includeInPdf}
         onIncludeInPdfChange={onIncludeInPdfChange}

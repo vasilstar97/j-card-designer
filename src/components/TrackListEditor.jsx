@@ -6,11 +6,12 @@ import Tabs from "antd/es/tabs";
 function TrackSide({ side }) {
   const label = side.toUpperCase();
   return (
-    <section className="track-side" aria-labelledby={`side-${side}-heading`}>
-      <label className="field" id={`side-${side}-heading`}>Side {label} title
-        <Input id={`side-${side}-title`} defaultValue={`SIDE ${label}`} maxLength={80} />
+    <section className="track-side" aria-label={`Side ${label} settings`}>
+      <label className="field">Title
+        <Input id={`side-${side}-title`} aria-label={`Side ${label} title`} defaultValue={`SIDE ${label}`} maxLength={80} />
       </label>
-      <div className="track-table-wrap">
+      <div className="track-table-wrap" role="group" aria-labelledby={`side-${side}-songs-label`}>
+        <div id={`side-${side}-songs-label`} className="field-label">Songs</div>
         <table className="track-table">
           <thead>
             <tr>

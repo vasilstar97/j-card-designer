@@ -7,13 +7,13 @@ import {
   installEvents,
   loadImageFile,
   movePaletteColor,
-  resetEditor,
   restoreCardState,
   setDesignColor as setEditorDesignColor,
   setPaletteColor,
   showEditorMessage
 } from "./editor/controller.js";
 import { loadWorkspace, saveWorkspace } from "./editor/storage.js";
+import { cardFileName, readCardFile, serializeCard } from "./editor/cardTransfer.js";
 import PreviewWorkspace from "./components/PreviewWorkspace.jsx";
 import ReleaseSettings from "./components/ReleaseSettings.jsx";
 import TrackListEditor from "./components/TrackListEditor.jsx";
@@ -79,6 +79,7 @@ function App() {
   const [designColors, setDesignColors] = useState(colorDefaults);
   const [workspaceReady, setWorkspaceReady] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const cardsRef = useRef(cards);
   const activeCardIdRef = useRef(activeCardId);
@@ -227,22 +228,49 @@ function App() {
     scheduleSave();
   };
 
-  const addCard = () => {
+  const appendCard = (nextCard) => {
     const currentData = captureCardState();
     const nextCards = cardsRef.current.map((card) =>
       card.id === activeCardIdRef.current
         ? { ...card, title: getCardTitle(currentData.album), data: currentData }
         : card
     );
-    const nextCard = createCard();
-    nextCards.push(nextCard);
+    nextCards.unshift(nextCard);
     cardsRef.current = nextCards;
     activeCardIdRef.current = nextCard.id;
     setCards(nextCards);
     setActiveCardId(nextCard.id);
     restoreCardState(nextCard.data);
     syncColors(nextCard.data);
-    scheduleSave();
+    scheduleSave(true);
+  };
+
+  const addCard = () => appendCard(createCard());
+
+  const importCard = async (file) => {
+    setImporting(true);
+    try {
+      const imported = await readCardFile(file);
+      appendCard({ ...createCard(imported.data), includeInPdf: imported.includeInPdf });
+      showEditorMessage("Cassette imported successfully.");
+    } catch (error) {
+      showEditorMessage(error.message || "Could not import the cassette.", true);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const exportCard = () => {
+    const data = captureCardState();
+    const card = { ...cardsRef.current.find((item) => item.id === activeCardIdRef.current), data };
+    const blob = new Blob([serializeCard(card)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = cardFileName(data);
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showEditorMessage("Cassette exported with its cover and track lists.");
   };
 
   const closeCard = (cardId) => {
@@ -267,19 +295,19 @@ function App() {
     scheduleSave();
   };
 
-  const reset = useCallback(() => resetEditor(), []);
-
-  const setIncludeInPdf = (includeInPdf) => {
+  const setCardIncludeInPdf = (cardId, includeInPdf) => {
     const data = captureCardState();
-    const nextCards = cardsRef.current.map((card) =>
-      card.id === activeCardIdRef.current
-        ? { ...card, title: getCardTitle(data.album), data, includeInPdf }
-        : card
-    );
+    const nextCards = cardsRef.current.map((card) => {
+      let next = card.id === activeCardIdRef.current ? { ...card, title: getCardTitle(data.album), data } : card;
+      if (card.id === cardId) next = { ...next, includeInPdf };
+      return next;
+    });
     cardsRef.current = nextCards;
     setCards(nextCards);
     scheduleSave(true);
   };
+
+  const setIncludeInPdf = (includeInPdf) => setCardIncludeInPdf(activeCardIdRef.current, includeInPdf);
 
   const handleExport = async (paperSize, colorMode) => {
     const currentData = captureCardState();
@@ -325,10 +353,15 @@ function App() {
             activeCardId={activeCardId}
             onSelectCard={selectCard}
             onAddCard={addCard}
+            onImportCard={importCard}
+            importing={importing}
+            onIncludeInPdfChange={setCardIncludeInPdf}
             onCloseCard={closeCard}
           />
           <PreviewWorkspace
+            cover={cards.find((card) => card.id === activeCardId)?.data.cover || ""}
             onExport={handleExport}
+            onExportCard={exportCard}
             includeInPdf={cards.find((card) => card.id === activeCardId)?.includeInPdf !== false}
             onIncludeInPdfChange={setIncludeInPdf}
             hasIncludedCards={cards.some((card) => card.includeInPdf !== false)}
@@ -337,7 +370,6 @@ function App() {
           <TrackListEditor>
             <ReleaseSettings
               onCoverFile={loadImageFile}
-              onReset={reset}
               paletteColors={paletteColors}
               designColors={designColors}
               onPaletteColorChange={updatePaletteColor}

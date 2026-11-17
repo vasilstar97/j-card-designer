@@ -7,6 +7,21 @@ function readBlobAsDataUrl(blob, errorMessage) {
   });
 }
 
+export async function validateEmbeddedImage(dataUrl) {
+  if (dataUrl === "") return;
+  const match = /^data:image\/[a-z0-9.+-]+;base64,([A-Za-z0-9+/]*={0,2})$/i.exec(dataUrl);
+  if (!match || match[1].length % 4 !== 0) throw new Error("The cassette cover must be an embedded image.");
+  const bytes = match[1].length / 4 * 3 - (match[1].endsWith("==") ? 2 : match[1].endsWith("=") ? 1 : 0);
+  if (bytes > 20 * 1024 * 1024) throw new Error("The cassette cover is larger than 20 MB.");
+  const image = new Image();
+  image.src = dataUrl;
+  try {
+    await image.decode();
+  } catch {
+    throw new Error("The cassette cover image could not be read.");
+  }
+}
+
 export async function readImageFile(file) {
   if (!file || !file.type.startsWith("image/")) {
     throw new Error("Choose an image file.");

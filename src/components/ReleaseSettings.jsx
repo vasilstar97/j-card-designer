@@ -1,5 +1,4 @@
 import React from "react";
-import Button from "antd/es/button";
 import Upload from "antd/es/upload";
 import { DesignColorControl } from "./ColorControls.jsx";
 import PaletteEditor from "./PaletteEditor.jsx";
@@ -9,7 +8,6 @@ const { Dragger } = Upload;
 
 function ReleaseSettings({
   onCoverFile,
-  onReset,
   paletteColors,
   designColors,
   onPaletteColorChange,
@@ -18,13 +16,11 @@ function ReleaseSettings({
 }) {
   return (
     <div className="release-settings" aria-label="Design settings">
-      <div className="editor-heading">
-        <h1>Design</h1>
-        <Button className="text-button" type="text" htmlType="button" onClick={onReset}>Reset</Button>
-      </div>
       <div className="editor-content">
         <div className="section-content">
-          <Dragger
+          <div className="field" role="group" aria-labelledby="cover-image-label">
+            <span id="cover-image-label" className="field-label">Cover image</span>
+            <Dragger
             className="cover-uploader"
             accept="image/*"
             maxCount={1}
@@ -38,6 +34,7 @@ function ReleaseSettings({
             <p className="ant-upload-text">Choose or drop an image or image URL</p>
             <p className="ant-upload-hint">You can also paste an image or image URL from the clipboard</p>
           </Dragger>
+          </div>
           <label className="field">Cover feather (mm)
             <input id="cover-feather" type="number" min="0" max={PANEL.front / 2} step="0.1" defaultValue="0" />
           </label>
