@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import Modal from "antd/es/modal";
+import Popconfirm from "antd/es/popconfirm";
 import { createCardArtworkSvg } from "../editor/controller.js";
 import { PANEL } from "../editor/constants.js";
 
@@ -37,20 +37,9 @@ export default function CardStorage({ cards, activeCardId, onSelectCard, onAddCa
   useEffect(() => {
     if (stack.current) stack.current.scrollTop = 0;
   }, [newestCardId]);
-  const [modal, contextHolder] = Modal.useModal();
-  const confirmRemoval = (card) => modal.confirm({
-    title: "Delete J-card?",
-    content: `${card.data.artist || "Artist"} — ${card.title}. This design will be removed from storage on this device.`,
-    okText: "Delete",
-    cancelText: "Cancel",
-    okButtonProps: { danger: true },
-    centered: true,
-    onOk: () => onCloseCard(card.id)
-  });
   return (
     <aside className="storage-sidebar" aria-label="Cassette storage"
       style={{ "--spine-width": `${PANEL.height}mm`, "--spine-aspect": PANEL.height / PANEL.side }}>
-      {contextHolder}
       <div className="storage-toolbar">
         <div className="storage-actions">
           <button className="storage-add" type="button" disabled={importing} onClick={() => importInput.current?.click()}>
@@ -90,12 +79,18 @@ export default function CardStorage({ cards, activeCardId, onSelectCard, onAddCa
                   </div>
                 </td>
                 <td className="storage-delete-cell">
+                  <Popconfirm title="Delete J-card?"
+                    description={`Remove ${card.title} from this device?`}
+                    placement="right" okText="Delete" cancelText="Cancel"
+                    okButtonProps={{ danger: true }} disabled={cards.length <= 1}
+                    onConfirm={() => onCloseCard(card.id)}>
                   <button className="cassette-remove" type="button" aria-label={`Delete ${card.title}`} disabled={cards.length <= 1}
-                    title="Delete J-card" onClick={() => confirmRemoval(card)}>
+                    title="Delete J-card">
                     <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M3.5 5.5h13M7 5.5V3h6v2.5M5 5.5l.8 11h8.4l.8-11M8 8.5v5M12 8.5v5" />
                     </svg>
                   </button>
+                  </Popconfirm>
                 </td>
               </tr>
             ))}

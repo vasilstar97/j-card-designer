@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { PANEL } from "../editor/constants.js";
 
-const TEXTURE_SCALE = 5;
-const CASE_SCALE = 3.1;
+const RENDER_SCALE = 2;
+const CASE_SCALE = 3.1 * RENDER_SCALE;
 const CASE_WIDTH = PANEL.front * CASE_SCALE;
 const CASE_HEIGHT = PANEL.height * CASE_SCALE;
 const CASE_DEPTH = PANEL.side * CASE_SCALE;
@@ -34,33 +34,26 @@ async function createPanelTextures(sourceSvg) {
   svg.removeAttribute("class");
   svg.removeAttribute("style");
   svg.querySelectorAll(".screen-only, .print-guides").forEach((element) => element.remove());
-  // Rasterize each exact panel boundary, without rounding a crop of the full card.
-  // Cropping the full raster can pick up pixels from the adjacent panel or bleed.
-  return Object.fromEntries(await Promise.all(Object.entries(panelRanges).map(async ([name, range]) => {
+  // Use exact panel boundaries to avoid sampling the adjacent panel or bleed.
+  const entries = Object.entries(panelRanges).map(([name, range]) => {
     const panelSvg = svg.cloneNode(true);
-    const width = Math.ceil(range.width * TEXTURE_SCALE);
-    const height = Math.ceil(PANEL.height * TEXTURE_SCALE);
     panelSvg.setAttribute("viewBox", `${range.x} 0 ${range.width} ${PANEL.height}`);
-    panelSvg.setAttribute("width", `${width}px`);
-    panelSvg.setAttribute("height", `${height}px`);
+    panelSvg.setAttribute("width", `${range.width * CASE_SCALE}px`);
+    panelSvg.setAttribute("height", `${CASE_HEIGHT}px`);
     panelSvg.setAttribute("preserveAspectRatio", "none");
-    const objectUrl = URL.createObjectURL(new Blob(
+    return [name, URL.createObjectURL(new Blob(
       [new XMLSerializer().serializeToString(panelSvg)],
       { type: "image/svg+xml;charset=utf-8" }
-    ));
-    try {
-      const image = await loadImage(objectUrl);
-      const panelCanvas = document.createElement("canvas");
-      panelCanvas.width = width;
-      panelCanvas.height = height;
-      const panelContext = panelCanvas.getContext("2d");
-      if (!panelContext) throw new Error("This browser cannot render the 3D preview.");
-      panelContext.drawImage(image, 0, 0, width, height);
-      return [name, panelCanvas.toDataURL("image/png")];
-    } finally {
-      URL.revokeObjectURL(objectUrl);
-    }
-  })));
+    ))];
+  });
+  try {
+    // Keep vector textures; avoid four canvas rasterizations and PNG encodes per edit.
+    await Promise.all(entries.map(([, url]) => loadImage(url)));
+    return Object.fromEntries(entries);
+  } catch (error) {
+    entries.forEach(([, url]) => URL.revokeObjectURL(url));
+    throw error;
+  }
 }
 
 function PanelTexture({ src, widthMm, className = "" }) {
@@ -95,30 +88,52 @@ export default function Card3DPreview() {
     return () => stage.removeEventListener("wheel", onWheel);
   }, []);
 
+  useEffect(() => () => {
+    if (textures) Object.values(textures).forEach((url) => URL.revokeObjectURL(url));
+  }, [textures]);
+
   useEffect(() => {
     const sourceSvg = document.querySelector("#artwork");
     if (!sourceSvg) return undefined;
     let generation = 0;
     let active = true;
+    let timer;
+    let rendering = false;
     const refreshTextures = async () => {
-      const currentGeneration = ++generation;
+      if (rendering || !active) return;
+      rendering = true;
+      const currentGeneration = generation;
       try {
         const nextTextures = await createPanelTextures(sourceSvg);
-        if (!active || currentGeneration !== generation) return;
+        if (!active || currentGeneration !== generation) {
+          Object.values(nextTextures).forEach((url) => URL.revokeObjectURL(url));
+          return;
+        }
         setTextures(nextTextures);
         setError("");
       } catch (renderError) {
         if (!active || currentGeneration !== generation) return;
         setError(renderError.message || "Could not render the 3D preview.");
+      } finally {
+        rendering = false;
+        if (active && currentGeneration !== generation) {
+          clearTimeout(timer);
+          timer = setTimeout(refreshTextures, 180);
+        }
       }
     };
-    const observer = new MutationObserver(refreshTextures);
+    const observer = new MutationObserver(() => {
+      generation++;
+      clearTimeout(timer);
+      timer = setTimeout(refreshTextures, 180);
+    });
     observer.observe(sourceSvg, { childList: true, subtree: true, characterData: true, attributes: true });
     refreshTextures();
 
     return () => {
       active = false;
       generation++;
+      clearTimeout(timer);
       observer.disconnect();
     };
   }, []);
@@ -153,7 +168,9 @@ export default function Card3DPreview() {
   const modelStyle = {
     width: CASE_WIDTH,
     height: CASE_HEIGHT,
-    transform: `scale(${zoom}) rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`,
+    transform: `scale3d(${zoom}, ${zoom}, ${zoom}) rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`,
+    "--paper-offset": `${2 * RENDER_SCALE}px`,
+    "--inner-width": `${PANEL.inner * CASE_SCALE}px`,
     "--case-depth": `${CASE_DEPTH}px`,
     "--case-width": `${CASE_WIDTH}px`,
     "--case-height": `${CASE_HEIGHT}px`
@@ -173,6 +190,12 @@ export default function Card3DPreview() {
         <p className="card3d-error" role="status">{error}</p>
       ) : (
         <>
+          <div className="card3d-supersample" style={{
+            width: `${RENDER_SCALE * 100}%`, height: `${RENDER_SCALE * 100}%`,
+            transform: `translate(-50%, -50%) scale(${1 / RENDER_SCALE})`,
+            perspective: 1100 * RENDER_SCALE,
+            "--edge-width": `${RENDER_SCALE}px`
+          }}>
           <div className="card3d-model" style={modelStyle}>
             <div className="card3d-face card3d-front-face">
               <PanelTexture src={textures?.front} widthMm={PANEL.front} className="card3d-front-texture" />
@@ -197,6 +220,7 @@ export default function Card3DPreview() {
             <div className="card3d-face card3d-wall card3d-top-wall"><div className="card3d-glass" /></div>
             <div className="card3d-face card3d-wall card3d-bottom-wall"><div className="card3d-glass" /></div>
             <div className="card3d-face card3d-wall card3d-right-wall"><div className="card3d-glass" /></div>
+          </div>
           </div>
           <span className="card3d-hint">Drag to rotate · Scroll to zoom · {Math.round(zoom * 100)}%</span>
         </>
