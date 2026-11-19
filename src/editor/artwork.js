@@ -1,3 +1,4 @@
+import { readCoverFeathers } from "./coverSettings.js";
 import { MARK_EXTENSION_MM, PANEL } from "./constants.js";
 
 const textMeasureContext = document.createElement("canvas").getContext("2d");
@@ -77,7 +78,9 @@ export function renderArtwork(data, palette, svgElement) {
   const xInner = xFront + PANEL.front;
   const totalWidth = xInner + PANEL.inner;
   const coverBound = PANEL.front;
-  const coverFeather = Math.max(0, Math.min(Number(data.coverFeather) || 0, PANEL.front / 2));
+  const feathers = readCoverFeathers(data);
+  const bottomFeather = Math.max(0, Math.min(Number(feathers.coverBottomFeather) || 0, PANEL.front / 2));
+  const sidesFeather = Math.max(0, Math.min(Number(feathers.coverSidesFeather) || 0, PANEL.front / 2));
   const bleed = Math.max(0, Math.min(data.bleed, 10));
   const coverBleedOverlap = Math.min(bleed, 0.2);
   const pad = Math.max(0, Math.min(data.padding, 15));
@@ -96,17 +99,16 @@ export function renderArtwork(data, palette, svgElement) {
     <clipPath id="sideATracksClip"><rect x="${xInner + pad}" y="${sideAY}" width="${innerContentWidth}" height="${Math.max(0, innerBlockHeight)}"/></clipPath>
     <clipPath id="sideBTracksClip"><rect x="${xInner + pad}" y="${sideBY}" width="${innerContentWidth}" height="${Math.max(0, innerBlockHeight)}"/></clipPath>
   </defs>`;
-  const horizontalFeatherStart = coverFeather / PANEL.front;
+  const horizontalFeatherStart = sidesFeather / PANEL.front;
   const horizontalFeatherEnd = 1 - horizontalFeatherStart;
-  const bottomFeatherStart = 1 - coverFeather / coverBound;
-  const coverFeatherDefs = coverFeather > 0 ? `<defs>
+  const coverFeatherDefs = bottomFeather > 0 || sidesFeather > 0 ? `<defs>
     <linearGradient id="coverHorizontalFeatherGradient" gradientUnits="userSpaceOnUse" x1="${xFront}" y1="0" x2="${xFront + PANEL.front}" y2="0">
       <stop offset="0" stop-color="white" stop-opacity="0"/>
       <stop offset="${horizontalFeatherStart}" stop-color="white" stop-opacity="1"/>
       <stop offset="${horizontalFeatherEnd}" stop-color="white" stop-opacity="1"/>
       <stop offset="1" stop-color="white" stop-opacity="0"/>
     </linearGradient>
-    <linearGradient id="coverBottomFeatherGradient" gradientUnits="userSpaceOnUse" x1="0" y1="${coverBound - coverFeather}" x2="0" y2="${coverBound}">
+    <linearGradient id="coverBottomFeatherGradient" gradientUnits="userSpaceOnUse" x1="0" y1="${coverBound - bottomFeather}" x2="0" y2="${coverBound}">
       <stop offset="0" stop-color="white" stop-opacity="1"/>
       <stop offset="1" stop-color="white" stop-opacity="0"/>
     </linearGradient>
@@ -164,9 +166,11 @@ export function renderArtwork(data, palette, svgElement) {
   if (data.cover) {
     const coverImage = `<image href="${data.cover}" x="${xFront}" y="0" width="${PANEL.front}" height="${coverBound}" preserveAspectRatio="xMidYMid slice"/>`;
     const reflectedImage = `<image href="${data.cover}" x="${xFront}" y="0" width="${PANEL.front}" height="${coverBound}" preserveAspectRatio="xMidYMid slice" transform="translate(0 ${coverBleedOverlap}) scale(1 -1)"/>`;
-    if (coverFeather > 0) {
-      pieces.push(`<g clip-path="url(#topCoverBleedClip)" mask="url(#coverHorizontalFeatherMask)">${reflectedImage}</g>`);
-      pieces.push(`<g mask="url(#coverHorizontalFeatherMask)"><g mask="url(#coverBottomFeatherMask)">${coverImage}</g></g>`);
+    if (bottomFeather > 0 || sidesFeather > 0) {
+      const horizontalMask = sidesFeather > 0 ? ' mask="url(#coverHorizontalFeatherMask)"' : "";
+      const bottomMask = bottomFeather > 0 ? ' mask="url(#coverBottomFeatherMask)"' : "";
+      pieces.push(`<g clip-path="url(#topCoverBleedClip)"${horizontalMask}>${reflectedImage}</g>`);
+      pieces.push(`<g${horizontalMask}><g${bottomMask}>${coverImage}</g></g>`);
     } else {
       pieces.push(`<g clip-path="url(#topCoverBleedClip)">${reflectedImage}</g>`);
       pieces.push(coverImage);

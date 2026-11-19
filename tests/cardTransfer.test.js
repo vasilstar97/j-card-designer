@@ -8,7 +8,7 @@ function fixture() {
     includeInPdf: false,
     data: {
       artist: "Исполнитель", album: "Альбом", info: "LP\n2026", quote: "<quote> & текст",
-      font: "Open Sans", date: "2026-11", cover: "", coverFeather: 2.5,
+      font: "Open Sans", date: "2026-11", cover: "", coverBottomFeather: 2.5, coverSidesFeather: 6,
       sideATitle: "SIDE A", sideBTitle: "SIDE B",
       colors: { background: "#000000", accent: "#F55E36", text: "#FFFFFF" },
       palette: ["#F55E36", "#FFFFFF", "#333333", "#666666", "#999999"],
@@ -46,7 +46,7 @@ test("invalid design fields are rejected before restoring a cassette", async () 
     (data) => { data.colors.text = "url(javascript:alert(1))"; },
     (data) => { data.sideASongs[0].highlighted = "yes"; },
     (data) => { data.date = "2026-13"; },
-    (data) => { data.coverFeather = -1; },
+    (data) => { data.coverBottomFeather = -1; },
     (data) => { data.cover = 'https://example.com/cover.png" onload="alert(1)'; }
   ]) {
     const card = fixture();
@@ -71,4 +71,24 @@ test("oversized files are rejected without reading their contents", async () => 
 test("download names preserve Unicode and remove filesystem separators", () => {
   assert.equal(cardFileName(fixture().data), "Исполнитель - Альбом.jcard.json");
   assert.equal(cardFileName({ artist: "a/b", album: 'c:d?"' }), "a-b - c-d--.jcard.json");
+});
+
+test("legacy v1 cassette files migrate their shared feather to both edges", async () => {
+  const card = fixture();
+  delete card.data.coverBottomFeather; delete card.data.coverSidesFeather;
+  card.data.coverFeather = 7;
+  const text = JSON.stringify({ format: "j-card-generator", version: 1, card });
+  const { data } = await parseCardFile(text);
+  assert.equal(data.coverBottomFeather, 7);
+  assert.equal(data.coverSidesFeather, 7);
+  assert.equal(data.coverFeather, undefined);
+});
+
+test("both feather fields reject invalid imports", async () => {
+  for (const field of ["coverBottomFeather", "coverSidesFeather"]) {
+    for (const value of [-1, 1000, null, "3"]) {
+      const card = fixture(); card.data[field] = value;
+      await assert.rejects(parseCardFile(serializeCard(card)));
+    }
+  }
 });

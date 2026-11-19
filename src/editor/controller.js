@@ -1,3 +1,4 @@
+import { readCoverFeathers } from "./coverSettings.js";
 import { getPdfColorLabel, isPdfColorMode } from "./printColors.js";
 import { renderArtwork as renderSvgArtwork } from "./artwork.js";
 import { colorDefaults, localMonth, paletteDefaults, PADDING_MM, BLEED_MM, PANEL } from "./constants.js";
@@ -28,7 +29,8 @@ export function createDefaultCardState() {
     artist: "Artist",
     album: "Album title",
     info: "Debut album",
-    coverFeather: 0,
+    coverBottomFeather: 0,
+    coverSidesFeather: 0,
     quote: "",
     font: "Open Sans",
     date: localMonth(),
@@ -47,7 +49,8 @@ export function captureCardState() {
     artist: $("#artist-name").value,
     album: $("#album-name").value,
     info: $("#info-text").value,
-    coverFeather: Math.min(PANEL.front / 2, Math.max(0, Number($("#cover-feather").value) || 0)),
+    coverBottomFeather: Math.min(PANEL.front / 2, Math.max(0, Number($("#cover-bottom-feather").value) || 0)),
+    coverSidesFeather: Math.min(PANEL.front / 2, Math.max(0, Number($("#cover-sides-feather").value) || 0)),
     quote: $("#quote-text").value,
     font: $("#font-family").value,
     date: $("#recorded-date").value,
@@ -72,7 +75,7 @@ function artworkData(state) {
     artist: state.artist.trim(),
     album: state.album.trim(),
     info: state.info.trim(),
-    coverFeather: state.coverFeather,
+    ...readCoverFeathers(state),
     quote: state.quote.trim(),
     font: state.font,
     date: `recorded ${month}/${year}`,
@@ -98,7 +101,9 @@ export function restoreCardState(state) {
   $("#artist-name").value = state.artist;
   $("#album-name").value = state.album;
   $("#info-text").value = state.info;
-  $("#cover-feather").value = String(state.coverFeather ?? 0);
+  const feathers = readCoverFeathers(state);
+  $("#cover-bottom-feather").value = String(feathers.coverBottomFeather);
+  $("#cover-sides-feather").value = String(feathers.coverSidesFeather);
   $("#quote-text").value = state.quote;
   $("#font-family").value = state.font;
   $("#recorded-date").value = state.date || localMonth();
@@ -255,7 +260,8 @@ export function resetEditor() {
   $("#artist-name").value = "Artist";
   $("#album-name").value = "Album title";
   $("#info-text").value = "Debut album";
-  $("#cover-feather").value = "0";
+  $("#cover-bottom-feather").value = "0";
+  $("#cover-sides-feather").value = "0";
   $("#quote-text").value = "";
   $("#font-family").value = "Open Sans";
   $("#recorded-date").value = localMonth();
@@ -288,7 +294,7 @@ export function installEvents(onChange) {
 
   // Bind only artwork fields. Native handlers on React-controlled export selects
   // can trigger a parent render before React reads the new selection.
-  $$("#artist-name, #album-name, #info-text, #cover-feather, #quote-text, #recorded-date, #font-family, #side-a-title, #side-b-title").forEach((input) => {
+  $$("#artist-name, #album-name, #info-text, #cover-bottom-feather, #cover-sides-feather, #quote-text, #recorded-date, #font-family, #side-a-title, #side-b-title").forEach((input) => {
     on(input, "input", updateArtwork);
     on(input, "change", updateArtwork);
   });

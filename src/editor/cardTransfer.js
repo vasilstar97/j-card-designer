@@ -1,14 +1,17 @@
+import { readCoverFeathers } from "./coverSettings.js";
 import { PANEL } from "./constants.js";
 import { validateEmbeddedImage } from "./images.js";
 
 const FORMAT = "j-card-generator";
-const VERSION = 1;
+const VERSION = 2;
 const MAX_FILE_BYTES = 32 * 1024 * 1024;
 const isObject = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 const isColor = (value) => typeof value === "string" && /^#[\da-f]{6}$/i.test(value);
 
 export function serializeCard(card) {
-  return JSON.stringify({ format: FORMAT, version: VERSION, card: { includeInPdf: card.includeInPdf !== false, data: card.data } }, null, 2);
+  const data = { ...card.data, ...readCoverFeathers(card.data) };
+  delete data.coverFeather;
+  return JSON.stringify({ format: FORMAT, version: VERSION, card: { includeInPdf: card.includeInPdf !== false, data } }, null, 2);
 }
 
 export function cardFileName(data) {
@@ -25,16 +28,17 @@ export async function parseCardFile(text) {
     throw new Error("This file is not valid cassette JSON.");
   }
   if (!isObject(payload) || payload.format !== FORMAT) throw new Error("Choose a cassette file exported by this app (.jcard.json).");
-  if (payload.version !== VERSION) throw new Error("This cassette file version is not supported.");
+  if (![1, VERSION].includes(payload.version)) throw new Error("This cassette file version is not supported.");
   if (!isObject(payload.card) || !isObject(payload.card.data)) throw new Error("The cassette file has no valid design data.");
   const { data, includeInPdf = true } = payload.card;
   const stringFields = ["artist", "album", "info", "quote", "font", "date", "sideATitle", "sideBTitle", "cover"];
   if (stringFields.some((key) => typeof data[key] !== "string") || typeof includeInPdf !== "boolean") {
     throw new Error("The cassette file contains invalid text or settings.");
   }
+  const feathers = readCoverFeathers(data);
   if (!["Open Sans", "Noto Sans JP"].includes(data.font) ||
       (data.date !== "" && !/^\d{4}-(0[1-9]|1[0-2])$/.test(data.date)) ||
-      !Number.isFinite(data.coverFeather) || data.coverFeather < 0 || data.coverFeather > PANEL.front / 2) {
+      Object.values(feathers).some((value) => !Number.isFinite(value) || value < 0 || value > PANEL.front / 2)) {
     throw new Error("The cassette file contains invalid font, date, or cover settings.");
   }
   if (!Array.isArray(data.palette) || data.palette.length !== 5 || !data.palette.every(isColor) ||
@@ -49,7 +53,7 @@ export async function parseCardFile(text) {
     return tracks.map(({ title, highlighted }) => ({ title, highlighted }));
   };
   const cleanData = Object.fromEntries(stringFields.map((key) => [key, data[key]]));
-  cleanData.coverFeather = data.coverFeather;
+  Object.assign(cleanData, feathers);
   cleanData.colors = Object.fromEntries(["background", "accent", "text"].map((key) => [key, data.colors[key]]));
   cleanData.palette = [...data.palette];
   cleanData.sideASongs = readTracks(data.sideASongs);

@@ -1,3 +1,4 @@
+import { readCoverFeathers } from "./editor/coverSettings.js";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import ConfigProvider from "antd/es/config-provider";
 import {
@@ -35,7 +36,8 @@ function createCard(data = createDefaultCardState()) {
 function normalizeCard(card) {
   if (!card || typeof card.id !== "string" || !card.data || typeof card.data !== "object") return null;
   const defaults = createDefaultCardState();
-  const data = { ...defaults, ...card.data };
+  const data = { ...defaults, ...card.data, ...readCoverFeathers(card.data) };
+  delete data.coverFeather;
   if (
     typeof data.artist !== "string" ||
     typeof data.album !== "string" ||
@@ -44,14 +46,13 @@ function normalizeCard(card) {
     typeof data.font !== "string" ||
     typeof data.date !== "string" ||
     typeof data.cover !== "string" ||
-    typeof data.coverFeather !== "number" ||
-    !Number.isFinite(data.coverFeather) ||
-    data.coverFeather < 0 ||
+    [data.coverBottomFeather, data.coverSidesFeather].some((value) => typeof value !== "number" || !Number.isFinite(value) || value < 0) ||
     !Array.isArray(data.palette) ||
     !Array.isArray(data.sideASongs) ||
     !Array.isArray(data.sideBSongs)
   ) return null;
-  data.coverFeather = Math.min(PANEL.front / 2, data.coverFeather);
+  data.coverBottomFeather = Math.min(PANEL.front / 2, data.coverBottomFeather);
+  data.coverSidesFeather = Math.min(PANEL.front / 2, data.coverSidesFeather);
   data.colors = { ...defaults.colors, ...data.colors };
   const isHexColor = (color) => typeof color === "string" && /^#[\da-f]{6}$/i.test(color);
   const validTracks = (tracks) =>

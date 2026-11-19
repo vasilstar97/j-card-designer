@@ -35,9 +35,14 @@ function ReleaseSettings({
             <p className="ant-upload-hint">You can also paste an image or image URL from the clipboard</p>
           </Dragger>
           </div>
-          <label className="field">Cover feather (mm)
-            <input id="cover-feather" type="number" min="0" max={PANEL.front / 2} step="0.1" defaultValue="0" />
-          </label>
+          <div className="field-row">
+            <label className="field">Bottom feather (mm)
+              <input id="cover-bottom-feather" type="number" min="0" max={PANEL.front / 2} step="0.1" defaultValue="0" />
+            </label>
+            <label className="field">Sides feather (mm)
+              <input id="cover-sides-feather" type="number" min="0" max={PANEL.front / 2} step="0.1" defaultValue="0" />
+            </label>
+          </div>
           <label className="field">Artist
             <input id="artist-name" type="text" defaultValue="Artist" maxLength={160} />
           </label>
