@@ -45,3 +45,22 @@ export async function saveWorkspace(workspace) {
     transaction.addEventListener("abort", () => reject(transaction.error || new Error("Could not save the project locally.")), { once: true });
   });
 }
+
+export async function loadPrintSettings() {
+  const database = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const request = database.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).get("print-settings");
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("Could not read PDF settings."));
+  });
+}
+
+export async function savePrintSettings(settings) {
+  const database = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(STORE_NAME, "readwrite");
+    transaction.objectStore(STORE_NAME).put(settings, "print-settings");
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = transaction.onabort = () => reject(transaction.error || new Error("Could not save PDF settings."));
+  });
+}

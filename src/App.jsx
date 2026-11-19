@@ -309,7 +309,7 @@ function App() {
 
   const setIncludeInPdf = (includeInPdf) => setCardIncludeInPdf(activeCardIdRef.current, includeInPdf);
 
-  const handleExport = async (paperSize, colorMode) => {
+  const handleExport = async (paperSize, colorMode, iccOptions) => {
     const currentData = captureCardState();
     const exportCards = cardsRef.current.map((card) =>
       card.id === activeCardIdRef.current
@@ -325,7 +325,7 @@ function App() {
     }
     setExporting(true);
     try {
-      await exportArtwork(includedCards.map((card) => card.data), paperSize, colorMode);
+      await exportArtwork(includedCards.map((card) => card.data), paperSize, colorMode, iccOptions);
     } finally {
       setExporting(false);
     }

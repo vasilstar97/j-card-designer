@@ -1,3 +1,4 @@
+import { getPdfColorLabel, isPdfColorMode } from "./printColors.js";
 import { renderArtwork as renderSvgArtwork } from "./artwork.js";
 import { colorDefaults, localMonth, paletteDefaults, PADDING_MM, BLEED_MM, PANEL } from "./constants.js";
 import { readImageFile, readImageUrl } from "./images.js";
@@ -210,13 +211,13 @@ export function loadImageFile(file) {
     .catch((error) => showToast(error.message, true));
 }
 
-export async function exportArtwork(cardStates, paperSize, colorMode) {
+export async function exportArtwork(cardStates, paperSize, colorMode, iccOptions) {
   if (!["A4", "A3"].includes(paperSize)) {
     showToast("Choose A4 or A3 for the PDF.", true);
     return;
   }
-  if (!["RGB", "CMYK"].includes(colorMode)) {
-    showToast("Choose RGB or CMYK for the PDF.", true);
+  if (!isPdfColorMode(colorMode)) {
+    showToast("Choose a supported PDF color mode.", true);
     return;
   }
   if (!cardStates.length) {
@@ -227,7 +228,7 @@ export async function exportArtwork(cardStates, paperSize, colorMode) {
   const artworkSvgs = [];
   try {
     artworkSvgs.push(...cardStates.map(createCardArtworkSvg));
-    const blob = await createPrintPdf(artworkSvgs, paperSize, colorMode);
+    const blob = await createPrintPdf(artworkSvgs, paperSize, colorMode, iccOptions);
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     const now = new Date();
@@ -236,10 +237,13 @@ export async function exportArtwork(cardStates, paperSize, colorMode) {
       String(now.getMonth() + 1).padStart(2, "0"),
       String(now.getFullYear()).slice(-2)
     ].join("-");
-    link.download = `j-card-${dateStamp}-${paperSize}-${colorMode}.pdf`;
+    const profileSuffix = colorMode === "ICC"
+      ? "-" + (iccOptions?.profile?.name || "profile").replace(/[^a-z0-9_-]+/gi, "-").slice(0, 70)
+      : "";
+    link.download = `j-card-${dateStamp}-${paperSize}-${colorMode}${profileSuffix}.pdf`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-    showToast(`PDF exported successfully (${cardStates.length} J-cards, ${paperSize}, ${colorMode}).`);
+    showToast(`PDF exported successfully (${cardStates.length} J-cards, ${paperSize}, ${getPdfColorLabel(colorMode)}).`);
   } catch (error) {
     showToast(error.message || "Could not export PDF.", true);
   } finally {
@@ -282,7 +286,9 @@ export function installEvents(onChange) {
   on(document.fonts, "loadingdone", updateArtwork);
   document.fonts.ready.then(() => updateArtwork());
 
-  $$("input:not([type=color]), textarea, select").forEach((input) => {
+  // Bind only artwork fields. Native handlers on React-controlled export selects
+  // can trigger a parent render before React reads the new selection.
+  $$("#artist-name, #album-name, #info-text, #cover-feather, #quote-text, #recorded-date, #font-family, #side-a-title, #side-b-title").forEach((input) => {
     on(input, "input", updateArtwork);
     on(input, "change", updateArtwork);
   });

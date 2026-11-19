@@ -1,6 +1,9 @@
+import { PDF_COLOR_MODES } from "../editor/printColors.js";
 import React, { useState } from "react";
 import Card3DPreview from "./Card3DPreview.jsx";
 import useArtworkViewport from "./useArtworkViewport.js";
+import usePrintSettings from "./usePrintSettings.js";
+import IccProfileSettings from "./IccProfileSettings.jsx";
 
 function PreviewToolbar({ viewMode, onViewModeToggle, onFit, onActualSize, isActualSize }) {
   return (
@@ -47,7 +50,12 @@ function PreviewFooter({
   paperSize,
   onPaperSizeChange,
   colorMode,
-  onColorModeChange
+  onColorModeChange,
+  settings,
+  setSettings,
+  printReady,
+  printError,
+  profile
 }) {
   return (
     <footer className="preview-footer" aria-label="PDF export controls">
@@ -62,6 +70,7 @@ function PreviewFooter({
           className="paper-size-select"
           aria-label="PDF paper size"
           value={paperSize}
+          disabled={!printReady || exporting}
           onChange={(event) => onPaperSizeChange(event.target.value)}
         >
           <option value="A4">A4</option>
@@ -70,17 +79,21 @@ function PreviewFooter({
         <select
           className="color-mode-select"
           aria-label="PDF color mode"
-          title="RGB stays closer to the preview; ask the print shop to convert it. Generic CMYK is not tied to a print profile."
+          title="Use CMYK (ICC profile) for conversion with your print shop's profile. Generic CMYK options do not use ICC profiles."
           value={colorMode}
+          disabled={!printReady || exporting}
           onChange={(event) => onColorModeChange(event.target.value)}
         >
-          <option value="RGB">RGB (sRGB)</option>
-          <option value="CMYK">CMYK (generic)</option>
+          {PDF_COLOR_MODES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
         </select>
-        <button className="button button-primary" type="button" disabled={exporting || !hasIncludedCards} onClick={() => onExport(paperSize, colorMode)}>
-          Download PDF
+        <button className="button button-primary" type="button"
+          disabled={exporting || !hasIncludedCards || !printReady || (colorMode === "ICC" && !profile)}
+          onClick={() => onExport(paperSize, colorMode, { profile, intent: settings.intent, blackPointCompensation: settings.blackPointCompensation })}>
+          {exporting ? "Exporting…" : "Download PDF"}
         </button>
       </div>
+      {colorMode === "ICC" && <IccProfileSettings settings={settings} setSettings={setSettings} disabled={exporting || !printReady} />}
+      {printError && <p className="icc-error" role="alert">{printError}</p>}
     </footer>
   );
 }
@@ -94,8 +107,8 @@ export default function PreviewWorkspace({
   onIncludeInPdfChange,
   hasIncludedCards
 }) {
-  const [paperSize, setPaperSize] = useState("A4");
-  const [colorMode, setColorMode] = useState("RGB");
+  const print = usePrintSettings();
+  const { paperSize, colorMode } = print.settings;
   const [viewMode, setViewMode] = useState("2d");
   const viewport = useArtworkViewport(viewMode === "2d");
   return (
@@ -126,9 +139,14 @@ export default function PreviewWorkspace({
         onIncludeInPdfChange={onIncludeInPdfChange}
         hasIncludedCards={hasIncludedCards}
         paperSize={paperSize}
-        onPaperSizeChange={setPaperSize}
+        onPaperSizeChange={(value) => print.update({ paperSize: value })}
         colorMode={colorMode}
-        onColorModeChange={setColorMode}
+        onColorModeChange={(value) => print.update({ colorMode: value })}
+        settings={print.settings}
+        setSettings={print.setSettings}
+        printReady={print.ready}
+        printError={print.error}
+        profile={print.profile}
       />
     </section>
   );

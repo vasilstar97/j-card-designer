@@ -25,12 +25,20 @@ Run `npm run build` to generate the production site in `dist/`, or `npm run prev
 
 ## Print and export
 
-Download PDF exports all open designs, with additional pages added as needed:
+Download PDF exports designs marked **Include in PDF**, with additional pages added as needed:
 
 - **A4:** portrait pages with two J-cards stacked vertically.
 - **A3:** landscape pages with four J-cards in a 2×2 layout.
 
-Choose **RGB (sRGB)** or **CMYK (generic)** beside the paper-size selector. RGB is selected by default and preserves the browser-rendered color values more closely; ask the print shop to convert RGB using its own profile. Generic CMYK uses an unprofiled mathematical conversion and may look less saturated. Neither mode includes a printer-specific ICC profile.
+Choose a color mode beside the paper-size selector:
+
+- **RGB (sRGB):** the default; preserves browser-rendered RGB values.
+- **CMYK (ICC profile):** converts the rendered sRGB artwork through a selected CMYK output profile using Little CMS in a Web Worker. The actual profile is embedded in the PDF as an ICCBased color space and output intent. Import an ICC/ICM profile from your print shop; the UI also links to official profile downloads. The files and choices are saved locally in IndexedDB. Relative colorimetric with black point compensation is the default; perceptual intent is also available. Profiles must be CMYK output profiles, ICC v2/v4, up to 16 MB.
+- **CMYK (generic):** mathematical conversion with maximum replacement of the shared CMY component by black.
+- **CMYK (generic, 240% ink):** the same conversion with total C+M+Y+K limited to 240%, reducing CMY while keeping K.
+- **CMYK (generic, rich black, 300% ink):** retains more CMY and uses less K to create a composite black, with total ink limited to 300%.
+
+The generic modes are unprofiled conversions, not FOGRA or printer-specific ICC profiles. Ink limits can change colors; a rich-black mode also makes neutral artwork use multiple inks. The ICC workflow does not certify the document as PDF/X. Ask the print shop which profile and PDF specification it accepts. The PDF contains the rendered artwork rather than separately editable original image profiles.
 
 Cards retain their real print size and are separated by a 10 mm gap. Padding and bleed are fixed at 3 mm. The preview footer contains grid, padding guide, and fold/cut visibility toggles; fold and cut marks are always included in the PDF, extending 3 mm beyond the bleed with a line thickness of 0.5 mm. Filenames include the current date, paper size, and color mode, for example `j-card-15-11-26-A4-RGB.pdf`. PDF artwork is rasterized in the browser at 300 dpi with a white background around each card's print marks.
 
