@@ -26,10 +26,6 @@ function PreviewToolbar({ viewMode, onViewModeToggle, onFit, onActualSize, isAct
           <input id="show-padding-guides" type="checkbox" defaultChecked />
           <span>Padding guides</span>
         </label>
-        <label className="guide-toggle">
-          <input id="show-print-guides" type="checkbox" defaultChecked />
-          <span>Fold &amp; cut marks</span>
-        </label>
       </div>
       {viewMode === "2d" && <div className="preview-scale-controls">
         <button className="preview-fit" type="button" onClick={onFit}>Fit</button>
@@ -119,7 +115,7 @@ export default function PreviewWorkspace({
         <div className={`artwork-wrap${viewMode === "3d" ? " is-3d" : ""}${viewMode === "3d" && cover ? " has-cover" : ""}`} ref={viewport.viewportRef}
           {...viewport.handlers} onDragStart={(event) => event.preventDefault()}>
           <div className="artwork-plane" style={viewport.planeStyle}>
-            <svg id="artwork" xmlns="http://www.w3.org/2000/svg" aria-label="J-card artwork preview" />
+            <svg id="artwork" className="hide-print-guides" xmlns="http://www.w3.org/2000/svg" aria-label="J-card artwork preview" />
           </div>
           {viewMode === "3d" && cover && <div className="card3d-backdrop" aria-hidden="true">
             <img src={cover} alt="" draggable="false" />

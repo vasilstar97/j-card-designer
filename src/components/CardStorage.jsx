@@ -30,7 +30,7 @@ const CardSpine = React.memo(function CardSpine({ data }) {
   return source ? <img className="cassette-spine" src={source} alt="" draggable="false" /> : null;
 });
 
-export default function CardStorage({ cards, activeCardId, onSelectCard, onAddCard, onCloseCard, onImportCard, importing, onIncludeInPdfChange }) {
+export default function CardStorage({ cards, activeCardId, onSelectCard, onAddCard, onDuplicateCard, onCloseCard, onImportCard, importing, onIncludeInPdfChange }) {
   const importInput = useRef(null);
   const stack = useRef(null);
   const newestCardId = cards[0]?.id;
@@ -45,6 +45,7 @@ export default function CardStorage({ cards, activeCardId, onSelectCard, onAddCa
           <button className="storage-add" type="button" disabled={importing} onClick={() => importInput.current?.click()}>
             {importing ? "Importing…" : "Import"}
           </button>
+          <button className="storage-add" type="button" aria-label="Duplicate current J-card" onClick={onDuplicateCard}>Duplicate</button>
           <button className="storage-add" type="button" aria-label="Add J-card" onClick={onAddCard}>+ Add</button>
         </div>
         <input ref={importInput} type="file" accept=".json,application/json" hidden aria-label="Import cassette file"

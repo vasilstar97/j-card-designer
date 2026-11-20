@@ -248,6 +248,12 @@ function App() {
 
   const addCard = () => appendCard(createCard());
 
+  const duplicateCard = () => {
+    const current = cardsRef.current.find((card) => card.id === activeCardIdRef.current);
+    if (!current) return;
+    appendCard({ ...createCard(structuredClone(captureCardState())), includeInPdf: current.includeInPdf !== false });
+  };
+
   const importCard = async (file) => {
     setImporting(true);
     try {
@@ -354,6 +360,7 @@ function App() {
             activeCardId={activeCardId}
             onSelectCard={selectCard}
             onAddCard={addCard}
+            onDuplicateCard={duplicateCard}
             onImportCard={importCard}
             importing={importing}
             onIncludeInPdfChange={setCardIncludeInPdf}

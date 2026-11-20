@@ -91,13 +91,12 @@ export function renderArtwork(data, palette, svgElement) {
   const sideBY = sideAY + innerBlockHeight + pad;
   const innerContentWidth = PANEL.inner - 2 * pad;
   const clipDefs = `<defs>
-    <clipPath id="backTextClip"><rect x="${pad}" y="${pad}" width="${Math.max(0, PANEL.height - 2 * pad)}" height="${Math.max(0, PANEL.back - 2 * pad)}"/></clipPath>
-    <clipPath id="sideTextClip"><rect x="${pad}" y="${pad}" width="${Math.max(0, PANEL.height - 2 * pad)}" height="${Math.max(0, PANEL.side - 2 * pad)}"/></clipPath>
+    <clipPath id="backPanelClip"><rect x="0" y="0" width="${PANEL.height}" height="${PANEL.back}"/></clipPath>
+    <clipPath id="sidePanelClip"><rect x="0" y="0" width="${PANEL.height}" height="${PANEL.side}"/></clipPath>
     <clipPath id="frontClip"><rect x="${xFront}" y="0" width="${PANEL.front}" height="${PANEL.height}"/></clipPath>
     <clipPath id="coverClip"><rect x="${xFront}" y="0" width="${PANEL.front}" height="${coverBound}"/></clipPath>
     <clipPath id="topCoverBleedClip"><rect x="${xFront}" y="${-bleed}" width="${PANEL.front}" height="${bleed + coverBleedOverlap}"/></clipPath>
-    <clipPath id="sideATracksClip"><rect x="${xInner + pad}" y="${sideAY}" width="${innerContentWidth}" height="${Math.max(0, innerBlockHeight)}"/></clipPath>
-    <clipPath id="sideBTracksClip"><rect x="${xInner + pad}" y="${sideBY}" width="${innerContentWidth}" height="${Math.max(0, innerBlockHeight)}"/></clipPath>
+    <clipPath id="innerPanelClip"><rect x="${xInner}" y="0" width="${PANEL.inner}" height="${PANEL.height}"/></clipPath>
   </defs>`;
   const horizontalFeatherStart = sidesFeather / PANEL.front;
   const horizontalFeatherEnd = 1 - horizontalFeatherStart;
@@ -131,14 +130,14 @@ export function renderArtwork(data, palette, svgElement) {
     const lineHeight = 4;
     const quoteHeight = quoteLines.length * lineHeight;
     const quoteY = (PANEL.back - quoteHeight) / 2 + lineHeight / 2;
-    pieces.push(`<g transform="translate(${xBack + PANEL.back} 0) rotate(90)" clip-path="url(#backTextClip)">`);
+    pieces.push(`<g transform="translate(${xBack + PANEL.back} 0) rotate(90)" clip-path="url(#backPanelClip)">`);
     pieces.push(svgTextLines(quoteLines, PANEL.height / 2, quoteY, {
       size: 3, lineHeight, color: data.accent, weight: 600, anchor: "middle", baseline: "central", font
     }));
     pieces.push("</g>");
   }
 
-  pieces.push(`<g transform="translate(${xSide + PANEL.side} 0) rotate(90)" clip-path="url(#sideTextClip)">`);
+  pieces.push(`<g transform="translate(${xSide + PANEL.side} 0) rotate(90)" clip-path="url(#sidePanelClip)">`);
   const paletteStart = coverBound;
   const sideTextWidth = Math.max(1, paletteStart - 2 * pad);
   const sideArtistLines = approximateWrap(data.artist || "", sideTextWidth, 3,
@@ -212,7 +211,8 @@ export function renderArtwork(data, palette, svgElement) {
     (text) => measuredTextWidth(text, data.font, 600));
   const infoRows = approximateWrap(data.info || "", PANEL.front - pad * 2, infoSize,
     (text) => measuredTextWidth(text, data.font, 400));
-  pieces.push(`<defs><clipPath id="frontInfoClip"><rect x="${xFront + pad}" y="${albumTop}" width="${PANEL.front - 2 * pad}" height="${albumMaxHeight}"/></clipPath></defs><g clip-path="url(#frontInfoClip)">`);
+  // Text guides are layout references, not clipping masks. Only the panel edge clips ink.
+  pieces.push("<g>");
   pieces.push(svgTextLines(titleRows, xFront + pad, albumY, {
     size: infoSize, lineHeight: albumLineHeight, color: data.text, weight: 600, font, anchor: "start", baseline: "central"
   }));
@@ -225,7 +225,7 @@ export function renderArtwork(data, palette, svgElement) {
   }));
   pieces.push("</g>");
 
-  pieces.push(`<g clip-path="url(#sideATracksClip)">`);
+  pieces.push(`<g clip-path="url(#innerPanelClip)">`);
   const sideATitleLines = approximateWrap(data.sideATitle, innerContentWidth, 3,
     (text) => measuredTextWidth(text, data.font, 600));
   const sideATitleY = sideAY + 2;
@@ -241,7 +241,7 @@ export function renderArtwork(data, palette, svgElement) {
   ));
   pieces.push("</g>");
 
-  pieces.push(`<g clip-path="url(#sideBTracksClip)">`);
+  pieces.push(`<g clip-path="url(#innerPanelClip)">`);
   const sideBTitleLines = approximateWrap(data.sideBTitle, innerContentWidth, 3,
     (text) => measuredTextWidth(text, data.font, 600));
   const sideBTitleY = sideBY + 2;

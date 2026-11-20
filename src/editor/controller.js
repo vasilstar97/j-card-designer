@@ -331,12 +331,8 @@ export function installEvents(onChange) {
   on($("#show-padding-guides"), "change", (event) => {
     $("#artwork").classList.toggle("hide-padding-guides", !event.target.checked);
   });
-  on($("#show-print-guides"), "change", (event) => {
-    $("#artwork").classList.toggle("hide-print-guides", !event.target.checked);
-  });
   $("#artwork").classList.toggle("hide-grid", !$("#show-grid").checked);
   $("#artwork").classList.toggle("hide-padding-guides", !$("#show-padding-guides").checked);
-  $("#artwork").classList.toggle("hide-print-guides", !$("#show-print-guides").checked);
 
   on(document, "paste", (event) => {
     if (event.target.closest?.("input, textarea, select, [contenteditable='true']")) return;
