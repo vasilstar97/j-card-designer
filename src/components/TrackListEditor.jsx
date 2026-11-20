@@ -1,6 +1,5 @@
 import React from "react";
 import Button from "antd/es/button";
-import Input from "antd/es/input";
 import Tabs from "antd/es/tabs";
 
 function TrackSide({ side }) {
@@ -8,7 +7,7 @@ function TrackSide({ side }) {
   return (
     <section className="track-side" aria-label={`Side ${label} settings`}>
       <label className="field">Title
-        <Input id={`side-${side}-title`} aria-label={`Side ${label} title`} defaultValue={`SIDE ${label}`} maxLength={80} />
+        <input id={`side-${side}-title`} type="text" aria-label={`Side ${label} title`} defaultValue={`SIDE ${label}`} maxLength={80} />
       </label>
       <div className="track-table-wrap" role="group" aria-labelledby={`side-${side}-songs-label`}>
         <div id={`side-${side}-songs-label`} className="field-label">Songs</div>
