@@ -163,14 +163,14 @@ h1, h2 { margin: 0; font-size: 20px; letter-spacing: -.55px; }
 .storage-sidebar { display: flex; flex-direction: column; width: min(36vw, calc(100vw - 600px), calc(var(--spine-width) + 136px)); min-width: 280px; min-height: 0; padding: 16px 14px 12px; border-right: 1px solid var(--line); background: #fafafa; }
 .storage-add { padding: 5px 9px; border: 1px solid #d9d9d9; border-radius: 6px; background: #fff; color: #444; font-size: 12px; }
 .storage-add:hover { color: var(--accent); border-color: var(--accent); }
-.storage-actions { display: flex; align-items: center; gap: 6px; }
+.storage-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .storage-toolbar { flex: 0 0 auto; padding-bottom: 12px; }
-.storage-actions .storage-add { flex: 1; min-height: 32px; }
+.storage-actions .storage-add { flex: 1 1 80px; min-height: 32px; }
 .storage-add:disabled { opacity: .6; cursor: wait; }
 .cassette-stack { flex: 1; min-height: 0; overflow-y: scroll; scrollbar-gutter: stable; padding: 0 3px 3px; }
 .storage-table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; }
 .storage-pdf-column { width: 32px; }
-.storage-action-column { width: 36px; }
+.storage-action-column { width: 64px; }
 .storage-table th { position: sticky; top: 0; z-index: 1; padding: 6px 4px; border-bottom: 1px solid var(--line); background: #fafafa; color: #666; font-size: 9px; font-weight: 500; text-align: left; }
 .storage-table td { padding: 8px 4px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 .storage-pdf-cell input { width: 14px; height: 14px; margin: 0; accent-color: var(--accent); cursor: pointer; }
@@ -298,3 +298,39 @@ h1, h2 { margin: 0; font-size: 20px; letter-spacing: -.55px; }
   #artwork, #artwork * { visibility: visible !important; }
   #artwork { position: fixed; inset: 0; width: 100vw; height: 100vh; }
 }
+
+/* Storage folders and cassette organization. */
+.cassette-row-actions { display: flex; gap: 3px; }
+.cassette-row-actions .cassette-remove { width: 25px; height: 28px; }
+.storage-group-heading { display: flex; align-items: center; gap: 6px; min-height: 30px; }
+.storage-group-toggle { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; padding: 4px 0; border: 0; background: none; text-align: left; font-size: 12px; font-weight: 600; cursor: pointer; color: #555; }
+.storage-group-toggle:disabled { cursor: default; }
+.storage-group-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.storage-group-count { font-size: 10px; color: #888; font-weight: 400; }
+.storage-group-active { color: var(--accent); font-size: 9px; }
+.storage-table .storage-group td { background: #f0f0f0; padding: 5px 6px; }
+.storage-table .storage-group-empty td { padding: 12px 6px; font-size: 11px; color: #888; }
+.storage-group-form { display: flex; gap: 5px; flex: 1; min-width: 0; }
+.storage-toolbar .storage-group-form { margin-top: 8px; }
+.storage-group-form input { width: 0; min-width: 0; flex: 1; border: 1px solid #ccc; border-radius: 5px; padding: 5px 7px; font: inherit; }
+.cassette-item[draggable] { cursor: grab; }
+.cassette-row.is-dragging { opacity: .4; }
+.storage-table .is-drop-target > td { box-shadow: inset 0 2px var(--accent); background: #fff0e9; }
+.storage-table .storage-drop-boundary td { height: 14px; padding: 0; border: 0; text-align: center; }
+.storage-drop-boundary span { display: block; height: 14px; line-height: 14px; font-size: 10px; color: transparent; }
+.storage-drop-boundary.is-drop-target span { color: var(--accent); }
+.storage-group-heading[draggable="true"] { cursor: grab; }
+.track-reorder-hint { margin: 0 0 8px; font-size: 10px; line-height: 1.5; color: #777; }
+.inner-track-table th:first-child, .inner-track-table td:first-child { width: 22px; padding: 2px 0; }
+.inner-track-table th:nth-child(2), .inner-track-table td:nth-child(2) { width: 25px; }
+.inner-track-table th:nth-last-child(2), .inner-track-table td:nth-last-child(2) { width: 42px; }
+.inner-track-table th:last-child, .inner-track-table td:last-child { width: 28px; }
+.track-drag-handle { padding: 3px; border: 0; background: none; color: #888; cursor: grab; font-size: 15px; }
+.track-drag-handle:focus-visible { outline: 1px solid var(--accent); border-radius: 3px; }
+.inner-track-table .track-side-divider td { background: #f0f0f0; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; color: #555; font-size: 11px; font-weight: 600; }
+.inner-track-table .track-side-divider td:last-child { width: auto; text-align: left; }
+.inner-track-table .track-drop-before td { box-shadow: inset 0 2px var(--accent); }
+.inner-track-table .track-drop-after td { box-shadow: inset 0 -2px var(--accent); }
+
+.add-track-actions { display: flex; gap: 8px; margin-top: 7px; }
+.add-track-actions > button { flex: 1; min-width: 0; }

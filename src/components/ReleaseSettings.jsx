@@ -15,7 +15,7 @@ function ReleaseSettings({
   onDesignColorChange
 }) {
   return (
-    <div className="release-settings" aria-label="Design settings">
+    <div className="release-settings" aria-label="Outer settings">
       <div className="editor-content">
         <div className="section-content">
           <div className="field" role="group" aria-labelledby="cover-image-label">
@@ -52,6 +52,9 @@ function ReleaseSettings({
           <label className="field">Release info
             <textarea id="info-text" rows={2} placeholder="e.g. album, side B" defaultValue="Debut album" />
           </label>
+          <label className="field">Back cover quote
+            <textarea id="quote-text" rows={3} placeholder="Enter a quote or release text" />
+          </label>
           <div className="field-row">
             <label className="field">Month / year
               <input id="recorded-date" type="month" />
@@ -63,9 +66,6 @@ function ReleaseSettings({
               </select>
             </label>
           </div>
-          <label className="field">Back cover quote
-            <textarea id="quote-text" rows={3} placeholder="Enter a quote or release text" />
-          </label>
           <section className="color-settings" aria-label="Artwork colors">
             <div className="palette-setting">
               <div className="color-setting-label">Palette</div>

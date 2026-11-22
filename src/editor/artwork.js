@@ -156,10 +156,16 @@ export function renderArtwork(data, palette, svgElement) {
   pieces.push("</g>");
   const paletteEnd = PANEL.height - pad;
   const swatchWidth = Math.max(0, (paletteEnd - paletteStart) / palette.length);
-  palette.forEach((color, index) => {
+  // Merge equal neighbours and overlap internal edges to prevent raster seams.
+  for (let index = 0; index < palette.length;) {
+    const color = palette[index];
+    let next = index + 1;
+    while (next < palette.length && palette[next].toLowerCase() === color.toLowerCase()) next++;
     const sx = paletteStart + index * swatchWidth;
-    pieces.push(`<rect x="${sx}" y="${pad}" width="${swatchWidth}" height="${Math.max(0, PANEL.side - 2 * pad)}" fill="${color}"/>`);
-  });
+    const end = Math.min(paletteEnd, paletteStart + next * swatchWidth + 0.04);
+    pieces.push(`<rect x="${sx}" y="${pad}" width="${end - sx}" height="${Math.max(0, PANEL.side - 2 * pad)}" fill="${color}"/>`);
+    index = next;
+  }
   pieces.push("</g>");
 
   if (data.cover) {

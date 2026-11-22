@@ -4,7 +4,7 @@ import { renderArtwork as renderSvgArtwork } from "./artwork.js";
 import { colorDefaults, localMonth, paletteDefaults, PADDING_MM, BLEED_MM, PANEL } from "./constants.js";
 import { readImageFile, readImageUrl } from "./images.js";
 import { createPrintPdf } from "./pdfExport.js";
-import { readTrackRows, renderTrackList } from "./tracks.js";
+import { installTrackEvents, readTrackRows, renderInnerTracks } from "./tracks.js";
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -115,8 +115,7 @@ export function restoreCardState(state) {
   palette.splice(0, palette.length, ...state.palette);
   coverDataUrl = state.cover || "";
   $("#image-status").textContent = coverDataUrl ? "Saved cover image" : "";
-  renderTrackList("a", state.sideASongs);
-  renderTrackList("b", state.sideBSongs);
+  renderInnerTracks(state.sideASongs, state.sideBSongs);
   updateArtwork({ notify: false });
 }
 
@@ -267,8 +266,7 @@ export function resetEditor() {
   $("#recorded-date").value = localMonth();
   $("#side-a-title").value = "SIDE A";
   $("#side-b-title").value = "SIDE B";
-  renderTrackList("a");
-  renderTrackList("b");
+  renderInnerTracks();
   Object.entries(colorDefaults).forEach(([name, color]) => {
     $(`#${name}-color`).value = color;
   });
@@ -305,26 +303,7 @@ export function installEvents(onChange) {
   on(trackEditor, "change", (event) => {
     if (event.target.matches("[data-track-highlight]")) updateArtwork();
   });
-  on(trackEditor, "click", (event) => {
-    const removeButton = event.target.closest("[data-remove-track]");
-    if (removeButton) {
-      const { side } = removeButton.dataset;
-      removeButton.closest(".track-entry").remove();
-      renderTrackList(side, readTrackRows(side));
-      updateArtwork();
-      return;
-    }
-
-    const addButton = event.target.closest("[data-add-track]");
-    if (!addButton) return;
-    const side = addButton.dataset.addTrack;
-    const list = $(`#side-${side}-tracks`);
-    const tracks = readTrackRows(side);
-    tracks.push({ title: "", highlighted: false });
-    renderTrackList(side, tracks);
-    updateArtwork();
-    list.querySelector(".track-entry:last-child [data-track-title]")?.focus();
-  });
+  listeners.push(installTrackEvents(trackEditor, updateArtwork));
   on($("#show-grid"), "change", (event) => {
     $("#artwork").classList.toggle("hide-grid", !event.target.checked);
   });
@@ -365,8 +344,7 @@ export function installEvents(onChange) {
     void loadImageUrl(url);
   });
 
-  renderTrackList("a");
-  renderTrackList("b");
+  renderInnerTracks();
   updateArtwork();
 
   return () => {

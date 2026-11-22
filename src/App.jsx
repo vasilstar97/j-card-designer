@@ -1,3 +1,4 @@
+import { moveCard, moveGroup, normalizeGroups, storageOrder } from "./editor/cardGroups.js";
 import { readCoverFeathers } from "./editor/coverSettings.js";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import ConfigProvider from "antd/es/config-provider";
@@ -30,7 +31,7 @@ function getCardTitle(album) {
 }
 
 function createCard(data = createDefaultCardState()) {
-  return { id: createCardId(), title: getCardTitle(data.album), includeInPdf: true, data };
+  return { id: createCardId(), title: getCardTitle(data.album), includeInPdf: false, groupId: null, data };
 }
 
 function normalizeCard(card) {
@@ -68,13 +69,17 @@ function normalizeCard(card) {
     !validTracks(data.sideASongs) ||
     !validTracks(data.sideBSongs)
   ) return null;
-  return { id: card.id, title: getCardTitle(data.album), includeInPdf: card.includeInPdf !== false, data };
+  return { id: card.id, title: getCardTitle(data.album), includeInPdf: card.includeInPdf !== false, groupId: typeof card.groupId === "string" ? card.groupId : null, data };
 }
 
 function App() {
   const initialCards = useRef(null);
   if (!initialCards.current) initialCards.current = [createCard()];
   const [cards, setCards] = useState(initialCards.current);
+  const [groups, setGroups] = useState([]);
+  const groupsRef = useRef([]);
+  const [ungroupedCollapsed, setUngroupedCollapsed] = useState(false);
+  const ungroupedCollapsedRef = useRef(false);
   const [activeCardId, setActiveCardId] = useState(initialCards.current[0].id);
   const [paletteColors, setPaletteColors] = useState(initialCards.current[0].data.palette);
   const [designColors, setDesignColors] = useState(colorDefaults);
@@ -95,6 +100,8 @@ function App() {
       saveTimer.current = null;
       saveWorkspace({
         cards: cardsRef.current,
+        groups: groupsRef.current,
+        ungroupedCollapsed: ungroupedCollapsedRef.current,
         activeCardId: activeCardIdRef.current
       }).catch((error) => {
         persistenceAvailable.current = false;
@@ -139,6 +146,8 @@ function App() {
       if (!workspaceLoaded.current || !persistenceAvailable.current) return;
       saveWorkspace({
         cards: cardsRef.current,
+        groups: groupsRef.current,
+        ungroupedCollapsed: ungroupedCollapsedRef.current,
         activeCardId: activeCardIdRef.current
       }).catch((error) => {
         showEditorMessage(`Could not save designs locally: ${error.message}`, true);
@@ -148,9 +157,17 @@ function App() {
 
     loadWorkspace().then((workspace) => {
       if (!active) return;
+      ungroupedCollapsedRef.current = workspace?.ungroupedCollapsed === true;
+      setUngroupedCollapsed(ungroupedCollapsedRef.current);
+      const savedGroups = normalizeGroups(workspace?.groups);
+      groupsRef.current = savedGroups;
+      setGroups(savedGroups);
       const savedCards = Array.isArray(workspace?.cards)
         ? workspace.cards.map(normalizeCard).filter(Boolean)
         : [];
+      savedCards.forEach((card) => {
+        if (!savedGroups.some((group) => group.id === card.groupId)) card.groupId = null;
+      });
       if (savedCards.length) {
         if (savedCards.length !== workspace.cards.length) {
           showEditorMessage("Some saved J-cards could not be loaded.", true);
@@ -237,6 +254,8 @@ function App() {
         : card
     );
     nextCards.unshift(nextCard);
+    ungroupedCollapsedRef.current = false;
+    setUngroupedCollapsed(false);
     cardsRef.current = nextCards;
     activeCardIdRef.current = nextCard.id;
     setCards(nextCards);
@@ -251,14 +270,14 @@ function App() {
   const duplicateCard = () => {
     const current = cardsRef.current.find((card) => card.id === activeCardIdRef.current);
     if (!current) return;
-    appendCard({ ...createCard(structuredClone(captureCardState())), includeInPdf: current.includeInPdf !== false });
+    appendCard(createCard(structuredClone(captureCardState())));
   };
 
   const importCard = async (file) => {
     setImporting(true);
     try {
       const imported = await readCardFile(file);
-      appendCard({ ...createCard(imported.data), includeInPdf: imported.includeInPdf });
+      appendCard(createCard(imported.data));
       showEditorMessage("Cassette imported successfully.");
     } catch (error) {
       showEditorMessage(error.message || "Could not import the cassette.", true);
@@ -314,6 +333,34 @@ function App() {
     scheduleSave(true);
   };
 
+  const updateGroups = (next) => {
+    groupsRef.current = next;
+    setGroups(next);
+    scheduleSave(true);
+  };
+
+  const relocateCard = (cardId, groupId, beforeId = null) => {
+    const next = moveCard(cardsRef.current, cardId, groupId, beforeId);
+    cardsRef.current = next;
+    setCards(next);
+    if (!groupId) {
+      ungroupedCollapsedRef.current = false;
+      setUngroupedCollapsed(false);
+    }
+    if (groupId) {
+      groupsRef.current = groupsRef.current.map((group) => group.id === groupId ? { ...group, collapsed: false } : group);
+      setGroups(groupsRef.current);
+    }
+    scheduleSave(true);
+  };
+
+  const deleteGroup = (groupId) => {
+    const next = cardsRef.current.map((card) => card.groupId === groupId ? { ...card, groupId: null } : card);
+    cardsRef.current = next;
+    setCards(next);
+    updateGroups(groupsRef.current.filter((group) => group.id !== groupId));
+  };
+
   const setIncludeInPdf = (includeInPdf) => setCardIncludeInPdf(activeCardIdRef.current, includeInPdf);
 
   const handleExport = async (paperSize, colorMode, iccOptions) => {
@@ -325,7 +372,7 @@ function App() {
     );
     cardsRef.current = exportCards;
     scheduleSave();
-    const includedCards = exportCards.filter((card) => card.includeInPdf !== false);
+    const includedCards = storageOrder(exportCards, groupsRef.current).filter((card) => card.includeInPdf !== false);
     if (!includedCards.length) {
       showEditorMessage("Select at least one J-card to include in the PDF.", true);
       return;
@@ -357,6 +404,18 @@ function App() {
         <main className={`workspace${workspaceReady ? "" : " workspace-loading"}`} aria-busy={!workspaceReady}>
           <CardStorage
             cards={cards}
+            groups={groups}
+            ungroupedCollapsed={ungroupedCollapsed}
+            onToggleUngrouped={() => {
+              ungroupedCollapsedRef.current = !ungroupedCollapsedRef.current;
+              setUngroupedCollapsed(ungroupedCollapsedRef.current);
+              scheduleSave(true);
+            }}
+            onMoveGroup={(id, beforeId) => updateGroups(moveGroup(groupsRef.current, id, beforeId))}
+            onAddGroup={(name) => updateGroups([...groupsRef.current, { id: createCardId(), name, collapsed: false }])}
+            onUpdateGroup={(id, patch) => updateGroups(groupsRef.current.map((group) => group.id === id ? { ...group, ...patch } : group))}
+            onDeleteGroup={deleteGroup}
+            onMoveCard={relocateCard}
             activeCardId={activeCardId}
             onSelectCard={selectCard}
             onAddCard={addCard}
