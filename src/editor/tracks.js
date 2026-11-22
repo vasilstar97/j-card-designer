@@ -18,6 +18,7 @@ function handle() {
   const cell = document.createElement("td");
   const button = document.createElement("button");
   button.type = "button";
+  button.tabIndex = -1;
   button.className = "track-drag-handle";
   button.dataset.moveTrack = "";
   button.draggable = true;
@@ -42,12 +43,14 @@ function createTrackRow(track) {
   const highlightCell = document.createElement("td");
   const checkbox = document.createElement("input");
   checkbox.type = "checkbox";
+  checkbox.tabIndex = -1;
   checkbox.checked = Boolean(track.highlighted);
   checkbox.dataset.trackHighlight = "";
   highlightCell.append(checkbox);
   const actionCell = document.createElement("td");
   const removeButton = document.createElement("button");
   removeButton.type = "button";
+  removeButton.tabIndex = -1;
   removeButton.className = "track-remove";
   removeButton.dataset.removeTrack = "";
   removeButton.textContent = "\u00d7";
